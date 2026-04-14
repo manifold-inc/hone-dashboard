@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import {
@@ -18,6 +18,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLiveContext } from "@/components/live-update-provider";
 import { cn } from "@/lib/utils";
+import { VersionDropdown } from "@/components/version-dropdown";
+
+function InfoTooltip({ text }: { text: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="relative inline-block">
+      <button
+        type="button"
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        onClick={() => setShow((s) => !s)}
+        className="ml-1.5 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-border/60 text-[8px] font-medium text-muted-foreground/60 transition-colors hover:border-primary/40 hover:text-muted-foreground"
+      >
+        i
+      </button>
+      {show && (
+        <span className="absolute bottom-full left-1/2 z-50 mb-1.5 -translate-x-1/2 whitespace-normal rounded border border-border/60 bg-popover px-2.5 py-1.5 text-[10px] leading-relaxed text-popover-foreground shadow-lg w-48 text-center">
+          {text}
+        </span>
+      )}
+    </span>
+  );
+}
 
 function StatTile({
   label,
@@ -25,6 +48,7 @@ function StatTile({
   sub,
   trend,
   accent,
+  info,
   className,
 }: {
   label: string;
@@ -32,6 +56,7 @@ function StatTile({
   sub?: string;
   trend?: "up" | "down" | "neutral";
   accent?: boolean;
+  info?: string;
   className?: string;
 }) {
   return (
@@ -43,6 +68,7 @@ function StatTile({
     >
       <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
         {label}
+        {info && <InfoTooltip text={info} />}
       </p>
       <div className="mt-1 flex items-baseline gap-1.5">
         <span
@@ -75,8 +101,8 @@ function StatTile({
 function LiveDot() {
   return (
     <span className="relative mr-1.5 inline-flex h-2 w-2">
-      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-50" />
-      <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-50" style={{ backgroundColor: "#32ffc8" }} />
+      <span className="relative inline-flex h-2 w-2 rounded-full" style={{ backgroundColor: "#32ffc8" }} />
     </span>
   );
 }
@@ -89,110 +115,6 @@ function fmtNumber(v: number | null | undefined, decimals = 4): string {
 function truncateHotkey(hotkey: string): string {
   if (hotkey.length <= 10) return hotkey;
   return `${hotkey.slice(0, 5)}...${hotkey.slice(-4)}`;
-}
-
-function VersionDropdown({
-  title,
-  versions,
-  currentVersion,
-  latestVersion,
-  isLatest,
-  onSelect,
-}: {
-  title: string;
-  versions: { version: string; count: number; latest: string }[];
-  currentVersion: string | null;
-  latestVersion: string | null;
-  isLatest: boolean;
-  onSelect: (version: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
-
-  return (
-    <div ref={ref} className="relative inline-block">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="group flex items-center gap-2"
-      >
-        <h1 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl">
-          {title}
-        </h1>
-        <svg
-          className={cn(
-            "mt-1 h-5 w-5 text-muted-foreground transition-transform group-hover:text-foreground",
-            open && "rotate-180"
-          )}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
-        {!isLatest && (
-          <Badge variant="outline" className="text-[10px] text-warning">
-            Historical
-          </Badge>
-        )}
-      </button>
-
-      {open && versions.length > 0 && (
-        <div className="absolute left-0 z-50 mt-2 min-w-[220px] rounded-md border border-border/60 bg-card p-1 shadow-xl shadow-black/30 backdrop-blur-xl">
-          {versions.map((v) => {
-            const active = v.version === currentVersion;
-            const isLt = v.version === latestVersion;
-            return (
-              <button
-                key={v.version}
-                onClick={() => {
-                  onSelect(v.version);
-                  setOpen(false);
-                }}
-                className={cn(
-                  "flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-xs transition-colors",
-                  active
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                )}
-              >
-                <span className="font-mono font-medium">v{v.version}</span>
-                {isLt && (
-                  <Badge
-                    variant="outline"
-                    className="ml-auto border-primary/30 text-[9px] text-primary"
-                  >
-                    latest
-                  </Badge>
-                )}
-                {!isLt && (
-                  <span className="ml-auto text-[10px] text-muted-foreground/60">
-                    {v.count} run{v.count !== 1 ? "s" : ""}
-                  </span>
-                )}
-                {active && (
-                  <svg className="h-3 w-3 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
 }
 
 export default function OverviewPage() {
@@ -353,9 +275,8 @@ export default function OverviewPage() {
           <span className="flex items-center">
             <LiveDot />
             <span
-              className={
-                connected ? "text-primary" : "text-muted-foreground"
-              }
+              className={connected ? "" : "text-muted-foreground"}
+              style={connected ? { color: "#32ffc8" } : undefined}
             >
               {connected ? "Live" : "Reconnecting..."}
             </span>
@@ -385,21 +306,66 @@ export default function OverviewPage() {
         </div>
       </div>
 
+      {/* Training Loss (per window) */}
+      {hasMinerData && (
+        <Card className="bg-card/60">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Training Loss
+                <span className="ml-2 font-mono text-[10px] text-muted-foreground/60">
+                  ({allMinerMetrics.length} windows)
+                </span>
+              </CardTitle>
+              {latestMiner?.loss != null && (
+                <Badge variant="outline" className="font-mono text-[10px]">
+                  {latestMiner.loss.toFixed(4)}
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <TimeSeriesChart
+              data={allMinerMetrics}
+              series={[
+                { key: "loss", label: "Loss", color: "#32ffc8" },
+              ]}
+              height={260}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Dense stat tiles */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        <StatTile label="Active Miners" value={data.activeMiners} accent />
-        <StatTile label="Validators" value={data.activeValidators} />
+        <StatTile
+          label="Active Miners"
+          value={data.activeMiners}
+          accent
+          info="Number of miner nodes currently participating in the training run."
+        />
+        <StatTile
+          label="Validators"
+          value={data.activeValidators}
+          info="Validator nodes that evaluate miner contributions and set weights."
+        />
         <StatTile
           label="Connected"
           value={onlineCount}
           sub={connected ? "Live" : "Reconnecting"}
           accent
+          info="Nodes connected via WebSocket right now, including miners and validators."
         />
         <StatTile
           label="Total Windows"
           value={data.totalWindows.toLocaleString()}
+          info="Cumulative training windows completed across all validator runs."
         />
-        <StatTile label="Active Runs" value={data.activeRuns} />
+        <StatTile
+          label="Active Runs"
+          value={data.activeRuns}
+          info="Total active training run processes (miners + validators combined)."
+        />
 
         {lw && (
           <>
@@ -418,6 +384,7 @@ export default function OverviewPage() {
                     : "down"
                   : "neutral"
               }
+              info="Validator's own-data loss after the latest training window. Lower is better."
             />
             <StatTile
               label="Gather Success"
@@ -425,14 +392,17 @@ export default function OverviewPage() {
               accent={
                 lw.gatherSuccessRate !== null && lw.gatherSuccessRate > 90
               }
+              info="Percentage of peers that successfully contributed gradients in the latest gather round."
             />
             <StatTile
               label="Global Step"
               value={lw.globalStep.toLocaleString()}
+              info="Total number of gradient updates applied to the shared model."
             />
             <StatTile
               label="Evaluated UIDs"
               value={lw.evaluatedUids ?? 0}
+              info="Number of unique miner UIDs evaluated by the validator in the latest window."
             />
           </>
         )}
@@ -443,18 +413,22 @@ export default function OverviewPage() {
               label="Miner Loss"
               value={latestMiner.loss?.toFixed(4) ?? "\u2014"}
               accent
+              info="Current training loss on the miner's local data. Lower means the model is learning."
             />
             <StatTile
               label="Tokens/sec"
               value={latestMiner.tokensPerSec?.toFixed(0) ?? "\u2014"}
+              info="Training throughput in tokens processed per second."
             />
             <StatTile
               label="Global Step"
               value={latestMiner.globalStep.toLocaleString()}
+              info="Total number of gradient updates applied to the shared model."
             />
             <StatTile
               label="Gather Peers"
               value={latestMiner.gatherPeers ?? 0}
+              info="Number of peers this miner exchanged gradients with in the last window."
             />
           </>
         )}
@@ -462,15 +436,15 @@ export default function OverviewPage() {
 
       {/* Live Loss per step (all miners) */}
       {minerRuns.length > 0 && (
-        <Card className="bg-card/60 border-emerald-900/30">
+        <Card className="bg-card/60" style={{ borderColor: "rgba(50, 255, 200, 0.15)" }}>
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
               <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Live Loss (per step)
               </CardTitle>
               <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" style={{ backgroundColor: "#32ffc8" }} />
+                <span className="relative inline-flex h-2 w-2 rounded-full" style={{ backgroundColor: "#32ffc8" }} />
               </span>
               <span className="ml-auto text-[10px] text-muted-foreground">
                 {minerRuns.length} miner{minerRuns.length !== 1 ? "s" : ""}
@@ -486,32 +460,6 @@ export default function OverviewPage() {
       {/* Miner training charts */}
       {hasMinerData && (
         <div className="grid gap-2 lg:grid-cols-2">
-          <Card className="bg-card/60">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Training Loss
-                  <span className="ml-2 font-mono text-[10px] text-muted-foreground/60">
-                    ({allMinerMetrics.length} windows)
-                  </span>
-                </CardTitle>
-                {latestMiner?.loss != null && (
-                  <Badge variant="outline" className="font-mono text-[10px]">
-                    {latestMiner.loss.toFixed(4)}
-                  </Badge>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <TimeSeriesChart
-                data={allMinerMetrics}
-                series={[
-                  { key: "loss", label: "Loss", color: "#37f712" },
-                ]}
-                height={220}
-              />
-            </CardContent>
-          </Card>
 
           <Card className="bg-card/60">
             <CardHeader className="pb-2">
@@ -533,7 +481,7 @@ export default function OverviewPage() {
                   {
                     key: "tokensPerSec",
                     label: "Tokens/sec",
-                    color: "#a3a3a3",
+                    color: "#32ffc8",
                   },
                 ]}
                 height={220}
@@ -551,8 +499,8 @@ export default function OverviewPage() {
               <TimeSeriesChart
                 data={allMinerMetrics}
                 series={[
-                  { key: "gradNorm", label: "Grad Norm", color: "#a3a3a3" },
-                  { key: "weightNorm", label: "Weight Norm", color: "#525252" },
+                  { key: "gradNorm", label: "Grad Norm", color: "#32ffc8" },
+                  { key: "weightNorm", label: "Weight Norm", color: "#1a9977" },
                 ]}
                 height={220}
               />
@@ -572,12 +520,12 @@ export default function OverviewPage() {
                   {
                     key: "gpuMemoryAllocated",
                     label: "Allocated (MB)",
-                    color: "#d4d4d4",
+                    color: "#32ffc8",
                   },
                   {
                     key: "gpuMemoryCached",
                     label: "Cached (MB)",
-                    color: "#525252",
+                    color: "#1a9977",
                   },
                 ]}
                 height={220}
@@ -610,8 +558,8 @@ export default function OverviewPage() {
               <TimeSeriesChart
                 data={allWindows}
                 series={[
-                  { key: "lossOwnBefore", label: "Before", color: "#525252" },
-                  { key: "lossOwnAfter", label: "After", color: "#37f712" },
+                  { key: "lossOwnBefore", label: "Before", color: "#1a9977" },
+                  { key: "lossOwnAfter", label: "After", color: "#32ffc8" },
                 ]}
                 height={300}
               />
@@ -665,7 +613,7 @@ export default function OverviewPage() {
                     {
                       key: "gatherSuccessRate",
                       label: "Success %",
-                      color: "#a3a3a3",
+                      color: "#32ffc8",
                     },
                   ]}
                   height={180}
@@ -686,12 +634,12 @@ export default function OverviewPage() {
                     {
                       key: "activeMiners",
                       label: "Active Miners",
-                      color: "#37f712",
+                      color: "#32ffc8",
                     },
                     {
                       key: "evaluatedUids",
                       label: "Evaluated UIDs",
-                      color: "#525252",
+                      color: "#1a9977",
                     },
                   ]}
                   height={180}
@@ -707,7 +655,7 @@ export default function OverviewPage() {
                       Top Miners
                     </CardTitle>
                     <Link
-                      href="/overview/leaderboard"
+                      href="/leaderboard"
                       className="text-[10px] text-primary hover:underline"
                     >
                       View All
@@ -719,7 +667,7 @@ export default function OverviewPage() {
                     {topMiners.map((miner, idx) => (
                       <Link
                         key={miner.uid}
-                        href={`/overview/uid/${miner.uid}`}
+                        href={`/uid/${miner.uid}`}
                         className="flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-accent/30"
                       >
                         <span className="w-5 font-mono text-xs text-muted-foreground">
@@ -764,7 +712,7 @@ export default function OverviewPage() {
                 Top Miners
               </CardTitle>
               <Link
-                href="/overview/leaderboard"
+                href="/leaderboard"
                 className="text-[10px] text-primary hover:underline"
               >
                 View All
@@ -776,7 +724,7 @@ export default function OverviewPage() {
               {topMiners.map((miner, idx) => (
                 <Link
                   key={miner.uid}
-                  href={`/overview/uid/${miner.uid}`}
+                  href={`/uid/${miner.uid}`}
                   className="flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-accent/30"
                 >
                   <span className="w-5 font-mono text-xs text-muted-foreground">
@@ -858,7 +806,7 @@ export default function OverviewPage() {
                       </td>
                       <td className="px-3 py-1.5 font-mono">
                         <Link
-                          href={`/overview/uid/${ev.uid}`}
+                          href={`/uid/${ev.uid}`}
                           className="text-primary hover:underline"
                         >
                           {ev.uid}

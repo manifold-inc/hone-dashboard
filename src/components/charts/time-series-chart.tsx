@@ -19,14 +19,14 @@ interface TimeSeriesChartProps {
 }
 
 const MONO_PALETTE = [
-  "#c4c4c4",
-  "#8a8a8a",
-  "#666666",
-  "#4a4a4a",
+  "#32ffc8",
+  "#1a9977",
+  "#0dcc9e",
+  "#5dffd6",
 ];
 
 const EMPHASIS_COLORS: Record<string, string> = {
-  positive: "#4ade80",
+  positive: "#32ffc8",
   negative: "#f87171",
   warning: "#fbbf24",
 };

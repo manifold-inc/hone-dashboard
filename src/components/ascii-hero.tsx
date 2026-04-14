@@ -197,17 +197,17 @@ export function AsciiHero({ className = "" }: { className?: string }) {
 
         if (green > 0.3) {
           const gA = Math.min(green * 1.5, 1);
-          ctx.fillStyle = `rgba(55, 247, 18, ${gA.toFixed(2)})`;
+          ctx.fillStyle = `rgba(255, 166, 71, ${gA.toFixed(2)})`;
 
           if (green > 0.6) {
-            ctx.shadowColor = "rgba(55, 247, 18, 0.6)";
+            ctx.shadowColor = "rgba(255, 166, 71, 0.6)";
             ctx.shadowBlur = 10 * dpr;
           } else {
             ctx.shadowColor = "transparent";
             ctx.shadowBlur = 0;
           }
         } else if (green > 0.1) {
-          ctx.fillStyle = `rgba(55, 247, 18, ${(alpha * 0.4).toFixed(2)})`;
+          ctx.fillStyle = `rgba(255, 166, 71, ${(alpha * 0.4).toFixed(2)})`;
           ctx.shadowColor = "transparent";
           ctx.shadowBlur = 0;
         } else {
@@ -229,8 +229,8 @@ export function AsciiHero({ className = "" }: { className?: string }) {
       const labelX = Math.round(cx - node.label.length / 2);
       const labelY = Math.round(cy);
 
-      ctx.fillStyle = "rgba(55, 247, 18, 1)";
-      ctx.shadowColor = "rgba(55, 247, 18, 0.8)";
+      ctx.fillStyle = "rgba(255, 166, 71, 1)";
+      ctx.shadowColor = "rgba(255, 166, 71, 0.8)";
       ctx.shadowBlur = 14 * dpr;
 
       for (let li = 0; li < node.label.length; li++) {

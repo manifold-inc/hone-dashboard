@@ -101,13 +101,13 @@ export default function RunsPage() {
               {data.runs.map((run) => (
                 <TableRow key={run.id} className="cursor-pointer hover:bg-accent/30">
                   <TableCell>
-                    <Link href={`/overview/runs/${run.id}`} className="flex items-center gap-2">
+                    <Link href={`/runs/${run.id}`} className="flex items-center gap-2">
                       <LivenessDot hotkey={run.hotkey} />
                       <RunStatusBadge lastSeenAt={run.lastSeenAt} />
                     </Link>
                   </TableCell>
                   <TableCell>
-                    <Link href={`/overview/runs/${run.id}`} className="block">
+                    <Link href={`/runs/${run.id}`} className="block">
                       <Badge variant="outline" className="text-xs">
                         {run.role}
                       </Badge>
@@ -115,7 +115,7 @@ export default function RunsPage() {
                   </TableCell>
                   <TableCell>
                     <Link
-                      href={`/overview/runs/${run.id}`}
+                      href={`/runs/${run.id}`}
                       className="block font-mono text-xs"
                     >
                       {run.uid ?? "\u2014"}
@@ -123,7 +123,7 @@ export default function RunsPage() {
                   </TableCell>
                   <TableCell>
                     <Link
-                      href={`/overview/runs/${run.id}`}
+                      href={`/runs/${run.id}`}
                       className="block font-mono text-xs"
                       title={run.hotkey}
                     >
@@ -132,7 +132,7 @@ export default function RunsPage() {
                   </TableCell>
                   <TableCell>
                     <Link
-                      href={`/overview/runs/${run.id}`}
+                      href={`/runs/${run.id}`}
                       className="block text-xs text-muted-foreground"
                     >
                       {run.version ?? "\u2014"}
@@ -140,7 +140,7 @@ export default function RunsPage() {
                   </TableCell>
                   <TableCell>
                     <Link
-                      href={`/overview/runs/${run.id}`}
+                      href={`/runs/${run.id}`}
                       className="block text-xs text-muted-foreground"
                     >
                       {timeAgo(run.startedAt)}
@@ -148,7 +148,7 @@ export default function RunsPage() {
                   </TableCell>
                   <TableCell>
                     <Link
-                      href={`/overview/runs/${run.id}`}
+                      href={`/runs/${run.id}`}
                       className="block text-xs text-muted-foreground"
                     >
                       {timeAgo(run.lastSeenAt)}
@@ -218,7 +218,7 @@ export default function RunsPage() {
                       </td>
                       <td className="px-3 py-1.5 font-mono">
                         <Link
-                          href={`/overview/uid/${ev.uid}`}
+                          href={`/uid/${ev.uid}`}
                           className="text-primary hover:underline"
                         >
                           {ev.uid}

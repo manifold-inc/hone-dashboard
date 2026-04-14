@@ -6,8 +6,9 @@ import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/overview", label: "Overview" },
-  { href: "/overview/leaderboard", label: "Leaderboard" },
-  { href: "/overview/runs", label: "Runs" },
+  { href: "/miners", label: "Miners" },
+  { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/runs", label: "Runs" },
 ];
 
 export function FloatingNav() {

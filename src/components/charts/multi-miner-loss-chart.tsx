@@ -16,16 +16,16 @@ import { getInnerSteps } from "@/lib/api";
 import type { TrainingRun } from "@/lib/types";
 
 const MINER_COLORS = [
-  "#4ade80",
+  "#32ffc8",
+  "#1a9977",
+  "#5dffd6",
+  "#0dcc9e",
   "#38bdf8",
-  "#fb923c",
   "#c084fc",
   "#f472b6",
   "#facc15",
-  "#34d399",
   "#60a5fa",
   "#a78bfa",
-  "#f87171",
   "#2dd4bf",
   "#e879f9",
 ];
@@ -97,8 +97,8 @@ export function MultiMinerLossChart({
         style={{ height }}
       >
         <div className="relative flex h-3 w-3">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" style={{ backgroundColor: "#32ffc8" }} />
+          <span className="relative inline-flex h-3 w-3 rounded-full" style={{ backgroundColor: "#32ffc8" }} />
         </div>
         <span>
           {anyLoading

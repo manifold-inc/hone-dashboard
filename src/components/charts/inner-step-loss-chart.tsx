@@ -66,8 +66,8 @@ export function InnerStepLossChart({
         style={{ height }}
       >
         <div className="relative flex h-3 w-3">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" style={{ backgroundColor: "#32ffc8" }} />
+          <span className="relative inline-flex h-3 w-3 rounded-full" style={{ backgroundColor: "#32ffc8" }} />
         </div>
         <span>Waiting for live training data&hellip;</span>
       </div>
@@ -148,7 +148,7 @@ export function InnerStepLossChart({
             type="monotone"
             dataKey="loss"
             name="Loss"
-            stroke="#4ade80"
+            stroke="#32ffc8"
             dot={false}
             strokeWidth={1.5}
             isAnimationActive={false}

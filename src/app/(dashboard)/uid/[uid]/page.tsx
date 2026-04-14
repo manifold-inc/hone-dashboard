@@ -31,6 +31,16 @@ export default function UidDetailPage({
     enabled: Number.isFinite(uid),
   });
 
+  const events = useMemo(() => {
+    if (!data) return [];
+    const combined = [
+      ...data.slashes.map((s) => ({ ...s, type: "slash" as const })),
+      ...data.inactivity.map((e) => ({ ...e, type: "inactivity" as const, reason: null })),
+    ];
+    combined.sort((a, b) => b.window - a.window);
+    return combined;
+  }, [data]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-32">
@@ -50,20 +60,11 @@ export default function UidDetailPage({
   const latest = data.latestScore;
   const scoresSorted = [...data.scores].reverse();
 
-  const events = useMemo(() => {
-    const combined = [
-      ...data.slashes.map((s) => ({ ...s, type: "slash" as const })),
-      ...data.inactivity.map((e) => ({ ...e, type: "inactivity" as const, reason: null })),
-    ];
-    combined.sort((a, b) => b.window - a.window);
-    return combined;
-  }, [data.slashes, data.inactivity]);
-
   return (
     <div className="space-y-8">
       <div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-          <Link href="/overview/leaderboard" className="hover:text-foreground">
+          <Link href="/leaderboard" className="hover:text-foreground">
             Leaderboard
           </Link>
           <span>/</span>
