@@ -1,17 +1,23 @@
 import type { Metadata } from "next";
-import { Geist_Mono } from "next/font/google";
+import { JetBrains_Mono, Space_Mono } from "next/font/google";
 import "./globals.css";
-import { Providers } from "@/components/providers";
-import { Sidebar } from "@/components/sidebar";
+import { FloatingNav } from "@/components/floating-nav";
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const spaceMono = Space_Mono({
+  variable: "--font-space-mono",
+  subsets: ["latin"],
+  weight: ["400", "700"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "Hone Dashboard",
-  description: "Training statistics for the Hone network",
+  title: "Hone",
+  description:
+    "Incentivized distributed training of large language models. Train together, build what's next.",
 };
 
 export default function RootLayout({
@@ -22,29 +28,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistMono.variable} dark h-full antialiased`}
+      className={`${spaceMono.variable} ${jetbrainsMono.variable} dark h-full antialiased`}
     >
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Miranda+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="min-h-full flex">
-        <Providers>
-          <Sidebar />
-          <main className="flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-              {children}
-            </div>
-          </main>
-        </Providers>
+      <body className="min-h-full">
+        <FloatingNav />
+        {children}
       </body>
     </html>
   );

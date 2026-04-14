@@ -14,8 +14,10 @@ import {
 } from "@/lib/api";
 import { MetricCard } from "@/components/metric-card";
 import { RunStatusBadge } from "@/components/run-status-badge";
+import { LivenessDot } from "@/components/liveness-dot";
 import { TimeSeriesChart } from "@/components/charts/time-series-chart";
 import { StackedAreaChart } from "@/components/charts/area-chart";
+import { InnerStepLossChart } from "@/components/charts/inner-step-loss-chart";
 import { ScoresTable } from "@/components/scores-table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -114,7 +116,7 @@ export default function RunDetailPage({
         <div>
           <div className="flex items-center gap-3">
             <Link
-              href="/runs"
+              href="/overview/runs"
               className="text-sm text-muted-foreground hover:text-foreground"
             >
               Runs
@@ -136,6 +138,7 @@ export default function RunDetailPage({
           <Badge variant="outline" className="text-xs">
             {run.role}
           </Badge>
+          <LivenessDot hotkey={run.hotkey} />
           <RunStatusBadge lastSeenAt={run.lastSeenAt} />
           {run.version && (
             <Badge variant="outline" className="text-xs text-muted-foreground">
@@ -210,6 +213,23 @@ export default function RunDetailPage({
 
         {/* ──── Training Tab ──── */}
         <TabsContent value="training" className="space-y-6">
+          <Card className="bg-card/60 border-emerald-900/30">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Live Loss (per step)
+                </CardTitle>
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <InnerStepLossChart runId={run.id} />
+            </CardContent>
+          </Card>
+
           {isValidator && windows.length > 0 && (
             <>
               <Card className="bg-card/60">
@@ -672,7 +692,7 @@ export default function RunDetailPage({
                                 </Badge>
                               </td>
                               <td className="px-3 py-1.5 font-mono">
-                                <Link href={`/uid/${ev.uid}`} className="hover:underline">{ev.uid}</Link>
+                                <Link href={`/overview/uid/${ev.uid}`} className="hover:underline">{ev.uid}</Link>
                               </td>
                               <td className="px-3 py-1.5 font-mono">{ev.scoreBefore?.toFixed(4) ?? "\u2014"}</td>
                               <td className="px-3 py-1.5 font-mono">{ev.scoreAfter?.toFixed(4) ?? "\u2014"}</td>

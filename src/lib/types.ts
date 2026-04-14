@@ -139,6 +139,20 @@ export interface InactivityEventRow {
   createdAt: string;
 }
 
+export interface InnerStepRow {
+  id: number;
+  runId: number;
+  window: number;
+  innerStep: number;
+  globalStep: number;
+  loss: number | null;
+  batchSize: number | null;
+  batchTokens: number | null;
+  innerLr: number | null;
+  gradNorm: number | null;
+  createdAt: string;
+}
+
 export interface LeaderboardEntry {
   uid: number;
   gradientScore: number | null;

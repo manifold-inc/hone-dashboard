@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
+import { LiveUpdateProvider } from "./live-update-provider";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(
@@ -9,7 +10,7 @@ export function Providers({ children }: { children: ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 15_000,
+            staleTime: 2_000,
             refetchInterval: 30_000,
             retry: 2,
           },
@@ -17,5 +18,9 @@ export function Providers({ children }: { children: ReactNode }) {
       })
   );
 
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={client}>
+      <LiveUpdateProvider>{children}</LiveUpdateProvider>
+    </QueryClientProvider>
+  );
 }

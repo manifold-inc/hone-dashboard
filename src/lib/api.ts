@@ -7,18 +7,24 @@ import type {
   SyncScoreRow,
   SlashEventRow,
   InactivityEventRow,
+  InnerStepRow,
   LeaderboardEntry,
   UidDetail,
   NetworkStats,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
-  });
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...init?.headers as Record<string, string>,
+  };
+  if (API_KEY) {
+    headers["x-api-key"] = API_KEY;
+  }
+  const res = await fetch(`${API_URL}${path}`, { ...init, headers });
   if (!res.ok) {
     throw new Error(`API ${path}: ${res.status} ${res.statusText}`);
   }
@@ -131,5 +137,15 @@ export function getUidDetail(uid: number, params?: { limit?: number }) {
   const qs = q.toString();
   return fetchJson<UidDetail>(
     `/api/stats/uid/${uid}${qs ? `?${qs}` : ""}`
+  );
+}
+
+export function getInnerSteps(id: string, params?: { window?: number; limit?: number }) {
+  const q = new URLSearchParams();
+  if (params?.window !== undefined) q.set("window", String(params.window));
+  if (params?.limit) q.set("limit", String(params.limit));
+  const qs = q.toString();
+  return fetchJson<{ innerSteps: InnerStepRow[] }>(
+    `/api/runs/${id}/inner-steps${qs ? `?${qs}` : ""}`
   );
 }

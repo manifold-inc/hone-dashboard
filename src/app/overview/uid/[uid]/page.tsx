@@ -63,7 +63,7 @@ export default function UidDetailPage({
     <div className="space-y-8">
       <div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-          <Link href="/leaderboard" className="hover:text-foreground">
+          <Link href="/overview/leaderboard" className="hover:text-foreground">
             Leaderboard
           </Link>
           <span>/</span>
