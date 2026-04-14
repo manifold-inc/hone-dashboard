@@ -33,6 +33,12 @@ export interface WindowMetrics {
   overlapMean: number | null;
   overlapMax: number | null;
   overlapPairsChecked: number | null;
+  overlapPairsOverThreshold: number | null;
+  overlapRatioOverThreshold: number | null;
+  compressMinMedianNorm: number | null;
+  compressMaxMedianNorm: number | null;
+  gatherIntendedMeanFinal: number | null;
+  gatherActualMeanFinal: number | null;
   timingWindowTotal: number | null;
   timingPeerUpdate: number | null;
   timingGather: number | null;
@@ -79,6 +85,10 @@ export interface MinerMetricsRow {
   gpuMemoryCached: number | null;
   innerLr: number | null;
   timing: Record<string, number> | null;
+  gradientL2Norm: number | null;
+  gradientTotalElements: number | null;
+  cpuUsage: number | null;
+  gpuUtilization: number | null;
   createdAt: string;
 }
 
@@ -94,6 +104,63 @@ export interface GradientStatsRow {
   meanWeightNorm: number | null;
   gradToWeightRatio: number | null;
   createdAt: string;
+}
+
+export interface SyncScoreRow {
+  id: number;
+  runId: number;
+  window: number;
+  uid: number;
+  l2Norm: number | null;
+  avgAbsDiff: number | null;
+  avgStepsBehind: number | null;
+  maxStepsBehind: number | null;
+  createdAt: string;
+}
+
+export interface SlashEventRow {
+  id: number;
+  runId: number;
+  window: number;
+  uid: number;
+  scoreBefore: number | null;
+  scoreAfter: number | null;
+  reason: string | null;
+  createdAt: string;
+}
+
+export interface InactivityEventRow {
+  id: number;
+  runId: number;
+  window: number;
+  uid: number;
+  scoreBefore: number | null;
+  scoreAfter: number | null;
+  createdAt: string;
+}
+
+export interface LeaderboardEntry {
+  uid: number;
+  gradientScore: number | null;
+  binaryIndicator: number | null;
+  binaryMovingAvg: number | null;
+  syncScore: number | null;
+  openskillMu: number | null;
+  openskillSigma: number | null;
+  openskillOrdinal: number | null;
+  finalScore: number | null;
+  weight: number | null;
+  window: number;
+  createdAt: string;
+  hotkey: string;
+}
+
+export interface UidDetail {
+  uid: number;
+  latestScore: UidScore | null;
+  scores: UidScore[];
+  slashes: SlashEventRow[];
+  inactivity: InactivityEventRow[];
 }
 
 export interface RecentWindowSnapshot {

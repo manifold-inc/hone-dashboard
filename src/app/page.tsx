@@ -101,28 +101,58 @@ export default function OverviewPage() {
         </Card>
       )}
 
-      {data.recentLoss.length > 0 && (
-        <Card className="bg-card/60">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Gather Success Rate
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TimeSeriesChart
-              data={data.recentLoss}
-              series={[
-                {
-                  key: "gatherSuccessRate",
-                  label: "Success %",
-                  color: "#a3a3a3",
-                },
-              ]}
-              height={200}
-            />
-          </CardContent>
-        </Card>
-      )}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {data.recentLoss.length > 0 && (
+          <Card className="bg-card/60">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Gather Success Rate
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TimeSeriesChart
+                data={data.recentLoss}
+                series={[
+                  {
+                    key: "gatherSuccessRate",
+                    label: "Success %",
+                    color: "#a3a3a3",
+                  },
+                ]}
+                height={200}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {data.recentLoss.length > 0 && (
+          <Card className="bg-card/60">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Active Miners Over Windows
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TimeSeriesChart
+                data={data.recentLoss}
+                series={[
+                  {
+                    key: "activeMiners",
+                    label: "Miners",
+                    color: "#d4d4d4",
+                  },
+                  {
+                    key: "evaluatedUids",
+                    label: "Evaluated UIDs",
+                    color: "#737373",
+                  },
+                ]}
+                height={200}
+              />
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }

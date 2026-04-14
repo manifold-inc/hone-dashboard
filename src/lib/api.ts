@@ -4,6 +4,11 @@ import type {
   UidScore,
   MinerMetricsRow,
   GradientStatsRow,
+  SyncScoreRow,
+  SlashEventRow,
+  InactivityEventRow,
+  LeaderboardEntry,
+  UidDetail,
   NetworkStats,
 } from "./types";
 
@@ -78,5 +83,53 @@ export function getGradientStats(id: string, params?: { limit?: number }) {
   const qs = q.toString();
   return fetchJson<{ gradients: GradientStatsRow[] }>(
     `/api/runs/${id}/gradients${qs ? `?${qs}` : ""}`
+  );
+}
+
+export function getSyncScores(id: string, params?: { uid?: number; limit?: number }) {
+  const q = new URLSearchParams();
+  if (params?.uid !== undefined) q.set("uid", String(params.uid));
+  if (params?.limit) q.set("limit", String(params.limit));
+  const qs = q.toString();
+  return fetchJson<{ syncScores: SyncScoreRow[] }>(
+    `/api/runs/${id}/sync-scores${qs ? `?${qs}` : ""}`
+  );
+}
+
+export function getSlashEvents(id: string, params?: { uid?: number; limit?: number }) {
+  const q = new URLSearchParams();
+  if (params?.uid !== undefined) q.set("uid", String(params.uid));
+  if (params?.limit) q.set("limit", String(params.limit));
+  const qs = q.toString();
+  return fetchJson<{ slashes: SlashEventRow[] }>(
+    `/api/runs/${id}/slashes${qs ? `?${qs}` : ""}`
+  );
+}
+
+export function getInactivityEvents(id: string, params?: { uid?: number; limit?: number }) {
+  const q = new URLSearchParams();
+  if (params?.uid !== undefined) q.set("uid", String(params.uid));
+  if (params?.limit) q.set("limit", String(params.limit));
+  const qs = q.toString();
+  return fetchJson<{ inactivity: InactivityEventRow[] }>(
+    `/api/runs/${id}/inactivity${qs ? `?${qs}` : ""}`
+  );
+}
+
+export function getLeaderboard(params?: { limit?: number }) {
+  const q = new URLSearchParams();
+  if (params?.limit) q.set("limit", String(params.limit));
+  const qs = q.toString();
+  return fetchJson<{ leaderboard: LeaderboardEntry[] }>(
+    `/api/stats/leaderboard${qs ? `?${qs}` : ""}`
+  );
+}
+
+export function getUidDetail(uid: number, params?: { limit?: number }) {
+  const q = new URLSearchParams();
+  if (params?.limit) q.set("limit", String(params.limit));
+  const qs = q.toString();
+  return fetchJson<UidDetail>(
+    `/api/stats/uid/${uid}${qs ? `?${qs}` : ""}`
   );
 }

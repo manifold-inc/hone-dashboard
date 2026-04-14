@@ -8,6 +8,9 @@ import {
   getScores,
   getMinerMetrics,
   getGradientStats,
+  getSyncScores,
+  getSlashEvents,
+  getInactivityEvents,
 } from "@/lib/api";
 import { MetricCard } from "@/components/metric-card";
 import { RunStatusBadge } from "@/components/run-status-badge";
@@ -60,6 +63,24 @@ export default function RunDetailPage({
     enabled: !!runData && runData.run.role === "validator",
   });
 
+  const { data: syncData } = useQuery({
+    queryKey: ["sync-scores", id],
+    queryFn: () => getSyncScores(id, { limit: 2000 }),
+    enabled: !!runData && runData.run.role === "validator",
+  });
+
+  const { data: slashData } = useQuery({
+    queryKey: ["slashes", id],
+    queryFn: () => getSlashEvents(id, { limit: 500 }),
+    enabled: !!runData && runData.run.role === "validator",
+  });
+
+  const { data: inactivityData } = useQuery({
+    queryKey: ["inactivity", id],
+    queryFn: () => getInactivityEvents(id, { limit: 500 }),
+    enabled: !!runData && runData.run.role === "validator",
+  });
+
   if (runLoading) {
     return (
       <div className="flex items-center justify-center py-32">
@@ -81,6 +102,9 @@ export default function RunDetailPage({
   const scores = scoreData?.scores ?? [];
   const miners = minerData?.miners?.slice().reverse() ?? [];
   const gradients = gradData?.gradients?.slice().reverse() ?? [];
+  const syncScores = syncData?.syncScores ?? [];
+  const slashes = slashData?.slashes ?? [];
+  const inactivityEvts = inactivityData?.inactivity ?? [];
 
   const isValidator = run.role === "validator";
 
@@ -180,6 +204,8 @@ export default function RunDetailPage({
           {isValidator && <TabsTrigger value="scores">Scores</TabsTrigger>}
           <TabsTrigger value="timing">Timing</TabsTrigger>
           {isValidator && <TabsTrigger value="gradients">Gradients</TabsTrigger>}
+          {isValidator && <TabsTrigger value="events">Events</TabsTrigger>}
+          {!isValidator && <TabsTrigger value="system">System</TabsTrigger>}
         </TabsList>
 
         {/* ──── Training Tab ──── */}
@@ -603,6 +629,133 @@ export default function RunDetailPage({
             ) : (
               <p className="py-12 text-center text-sm text-muted-foreground">
                 No gradient data recorded yet
+              </p>
+            )}
+          </TabsContent>
+        )}
+
+        {/* ──── Events Tab (Validator) ──── */}
+        {isValidator && (
+          <TabsContent value="events" className="space-y-6">
+            {slashes.length > 0 || inactivityEvts.length > 0 ? (
+              <Card className="bg-card/60">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Slash &amp; Inactivity Events ({slashes.length + inactivityEvts.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="rounded-md border border-border overflow-auto max-h-[500px]">
+                    <table className="w-full text-xs">
+                      <thead className="sticky top-0 bg-card">
+                        <tr className="border-b border-border">
+                          <th className="px-3 py-2 text-left font-medium text-muted-foreground">Window</th>
+                          <th className="px-3 py-2 text-left font-medium text-muted-foreground">Type</th>
+                          <th className="px-3 py-2 text-left font-medium text-muted-foreground">UID</th>
+                          <th className="px-3 py-2 text-left font-medium text-muted-foreground">Before</th>
+                          <th className="px-3 py-2 text-left font-medium text-muted-foreground">After</th>
+                          <th className="px-3 py-2 text-left font-medium text-muted-foreground">Reason</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[
+                          ...slashes.map((s) => ({ ...s, evType: "slash" as const })),
+                          ...inactivityEvts.map((e) => ({ ...e, evType: "inactivity" as const, reason: null as string | null })),
+                        ]
+                          .sort((a, b) => b.window - a.window)
+                          .map((ev, i) => (
+                            <tr key={`${ev.evType}-${ev.window}-${i}`} className="border-b border-border/50">
+                              <td className="px-3 py-1.5 font-mono">{ev.window}</td>
+                              <td className="px-3 py-1.5">
+                                <Badge variant={ev.evType === "slash" ? "destructive" : "outline"} className="text-[10px]">
+                                  {ev.evType}
+                                </Badge>
+                              </td>
+                              <td className="px-3 py-1.5 font-mono">
+                                <Link href={`/uid/${ev.uid}`} className="hover:underline">{ev.uid}</Link>
+                              </td>
+                              <td className="px-3 py-1.5 font-mono">{ev.scoreBefore?.toFixed(4) ?? "\u2014"}</td>
+                              <td className="px-3 py-1.5 font-mono">{ev.scoreAfter?.toFixed(4) ?? "\u2014"}</td>
+                              <td className="px-3 py-1.5 text-muted-foreground max-w-48 truncate">
+                                {ev.reason ?? "\u2014"}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <p className="py-12 text-center text-sm text-muted-foreground">
+                No events recorded yet
+              </p>
+            )}
+          </TabsContent>
+        )}
+
+        {/* ──── System Tab (Miner) ──── */}
+        {!isValidator && (
+          <TabsContent value="system" className="space-y-6">
+            {miners.length > 0 ? (
+              <>
+                <Card className="bg-card/60">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      GPU Memory
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <TimeSeriesChart
+                      data={miners}
+                      series={[
+                        { key: "gpuMemoryAllocated", label: "Allocated (MB)", color: "#d4d4d4" },
+                        { key: "gpuMemoryCached", label: "Cached (MB)", color: "#737373" },
+                      ]}
+                      height={220}
+                    />
+                  </CardContent>
+                </Card>
+
+                {miners.some((m) => m.gradientL2Norm !== null) && (
+                  <Card className="bg-card/60">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        Gradient Fingerprint L2 Norm
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <TimeSeriesChart
+                        data={miners}
+                        series={[
+                          { key: "gradientL2Norm", label: "L2 Norm", color: "#a3a3a3" },
+                        ]}
+                        height={200}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
+
+                <Card className="bg-card/60">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Throughput
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <TimeSeriesChart
+                      data={miners}
+                      series={[
+                        { key: "tokensPerSec", label: "Tokens/sec", color: "#d4d4d4" },
+                      ]}
+                      height={200}
+                    />
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <p className="py-12 text-center text-sm text-muted-foreground">
+                No system metrics recorded yet
               </p>
             )}
           </TabsContent>
