@@ -5,9 +5,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { LiveInnerStep } from "./use-live-metrics";
 
 const WS_URL =
-  (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
-    .replace("https://", "wss://")
-    .replace("http://", "ws://") + "/ws/dashboard";
+  process.env.NEXT_PUBLIC_WS_URL
+    ? `${process.env.NEXT_PUBLIC_WS_URL}/ws/dashboard`
+    : "ws://localhost:3001/ws/dashboard";
 
 const DASHBOARD_TOKEN = process.env.NEXT_PUBLIC_DASHBOARD_TOKEN || "";
 

@@ -13,18 +13,12 @@ import type {
   NetworkStats,
 } from "./types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
-
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...init?.headers as Record<string, string>,
-  };
-  if (API_KEY) {
-    headers["x-api-key"] = API_KEY;
-  }
-  const res = await fetch(`${API_URL}${path}`, { ...init, headers });
+  const proxyPath = path.replace(/^\/api\//, "/api/proxy/");
+  const res = await fetch(proxyPath, {
+    ...init,
+    headers: { "Content-Type": "application/json", ...init?.headers },
+  });
   if (!res.ok) {
     throw new Error(`API ${path}: ${res.status} ${res.statusText}`);
   }
