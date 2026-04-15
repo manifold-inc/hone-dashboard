@@ -635,7 +635,7 @@ export default function OverviewPage() {
                     {topMiners.map((miner, idx) => (
                       <Link
                         key={miner.uid}
-                        href={`/uid/${miner.uid}`}
+                        href={`/miners/${encodeURIComponent(miner.hotkey)}`}
                         className="flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-accent/30"
                       >
                         <span className="w-5 font-mono text-xs text-muted-foreground">
@@ -692,7 +692,7 @@ export default function OverviewPage() {
               {topMiners.map((miner, idx) => (
                 <Link
                   key={miner.uid}
-                  href={`/uid/${miner.uid}`}
+                  href={`/miners/${encodeURIComponent(miner.hotkey)}`}
                   className="flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-accent/30"
                 >
                   <span className="w-5 font-mono text-xs text-muted-foreground">
@@ -779,12 +779,7 @@ export default function OverviewPage() {
                         {ev.version ? `v${ev.version}` : "\u2014"}
                       </td>
                       <td className="px-3 py-1.5 font-mono">
-                        <Link
-                          href={`/uid/${ev.uid}`}
-                          className="text-primary hover:underline"
-                        >
-                          {ev.uid}
-                        </Link>
+                        {ev.uid}
                       </td>
                       <td className="px-3 py-1.5 font-mono">
                         {ev.scoreBefore?.toFixed(4) ?? "\u2014"}

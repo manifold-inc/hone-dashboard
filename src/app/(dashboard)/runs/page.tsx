@@ -227,12 +227,7 @@ export default function RunsPage() {
                         {ev.version ? `v${ev.version}` : "\u2014"}
                       </td>
                       <td className="px-3 py-1.5 font-mono">
-                        <Link
-                          href={`/uid/${ev.uid}`}
-                          className="text-primary hover:underline"
-                        >
-                          {ev.uid}
-                        </Link>
+                        {ev.uid}
                       </td>
                       <td className="px-3 py-1.5 font-mono">
                         {ev.scoreBefore?.toFixed(4) ?? "\u2014"}

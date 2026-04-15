@@ -178,7 +178,7 @@ export default function LeaderboardPage() {
                 <TableRow key={row.uid} className="hover:bg-accent/30">
                   <TableCell className="font-mono text-xs">{row.rank}</TableCell>
                   <TableCell className="text-xs">
-                    <Link href={`/uid/${row.uid}`} className="inline-block">
+                    <Link href={`/miners/${encodeURIComponent(row.hotkey)}`} className="inline-block">
                       <Badge variant="outline" className="font-mono text-xs">
                         {row.uid}
                       </Badge>

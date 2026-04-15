@@ -877,7 +877,7 @@ export default function RunDetailPage({
                                 </Badge>
                               </td>
                               <td className="px-3 py-1.5 font-mono">
-                                <Link href={`/uid/${ev.uid}`} className="hover:underline">{ev.uid}</Link>
+                                {ev.uid}
                               </td>
                               <td className="px-3 py-1.5 font-mono">{ev.scoreBefore?.toFixed(4) ?? "\u2014"}</td>
                               <td className="px-3 py-1.5 font-mono">{ev.scoreAfter?.toFixed(4) ?? "\u2014"}</td>
