@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { VersionHeader } from "@/components/version-header";
 
 type LeaderboardRow = LeaderboardEntry & { rank: number };
 
@@ -137,8 +138,8 @@ export default function LeaderboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Miner Leaderboard</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <VersionHeader title="Leaderboard" />
+        <p className="mt-1.5 text-sm text-muted-foreground">
           Latest scores for all evaluated UIDs
         </p>
       </div>

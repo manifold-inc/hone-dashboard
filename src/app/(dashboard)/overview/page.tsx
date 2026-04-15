@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   getNetworkStats,
-  getRuns,
   getLeaderboard,
   getWindows,
   getMinerMetrics,
@@ -18,7 +17,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLiveContext } from "@/components/live-update-provider";
 import { cn } from "@/lib/utils";
-import { VersionDropdown } from "@/components/version-dropdown";
+import { useVersion } from "@/components/version-context";
+import { VersionHeader } from "@/components/version-header";
 
 function InfoTooltip({ text }: { text: string }) {
   const [show, setShow] = useState(false);
@@ -119,41 +119,16 @@ function truncateHotkey(hotkey: string): string {
 
 export default function OverviewPage() {
   const { connected, onlineCount } = useLiveContext();
+  const { allRuns, currentVersion, isLatest } = useVersion();
   const { data, isLoading, error } = useQuery({
     queryKey: ["network-stats"],
     queryFn: getNetworkStats,
-  });
-
-  const { data: allRunsData } = useQuery({
-    queryKey: ["runs-overview-all"],
-    queryFn: () => getRuns({ limit: 20 }),
   });
 
   const { data: leaderboardData } = useQuery({
     queryKey: ["leaderboard-preview"],
     queryFn: () => getLeaderboard({ limit: 10 }),
   });
-
-  const allRuns = allRunsData?.runs ?? [];
-
-  const availableVersions = useMemo(() => {
-    const vset = new Map<string, { version: string; count: number; latest: string }>();
-    for (const r of allRuns) {
-      if (!r.version) continue;
-      const existing = vset.get(r.version);
-      if (existing) {
-        existing.count++;
-        if (r.lastSeenAt > existing.latest) existing.latest = r.lastSeenAt;
-      } else {
-        vset.set(r.version, { version: r.version, count: 1, latest: r.lastSeenAt });
-      }
-    }
-    return Array.from(vset.values()).sort((a, b) => b.latest.localeCompare(a.latest));
-  }, [allRuns]);
-
-  const latestVersion = availableVersions[0]?.version ?? null;
-  const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
-  const currentVersion = selectedVersion ?? latestVersion;
 
   const runs = currentVersion
     ? allRuns.filter((r) => r.version === currentVersion)
@@ -171,7 +146,6 @@ export default function OverviewPage() {
   }
   const minerRuns = Array.from(minerRunsByUid.values());
   const minerRun = minerRuns[0];
-  const isLatest = currentVersion === latestVersion;
 
   const validatorRunId = validatorRun?.id;
   const minerRunId = minerRun?.id;
@@ -218,9 +192,6 @@ export default function OverviewPage() {
     );
   }
 
-  const lw = isLatest ? data.latestWindow : null;
-  const runTitle = currentVersion ? `Hone v${currentVersion}` : "Hone Network";
-
   const topMiners =
     leaderboardData?.leaderboard
       ?.slice()
@@ -230,6 +201,17 @@ export default function OverviewPage() {
   const allWindows = (windowsData?.windows ?? []).slice().reverse();
   const allMinerMetrics = (minerData?.miners ?? []).slice().reverse();
   const latestMiner = allMinerMetrics[allMinerMetrics.length - 1];
+  const latestWindow = allWindows[allWindows.length - 1] ?? null;
+
+  const lw = latestWindow;
+
+  const versionMinerCount = minerRuns.length;
+  const versionValidatorCount = runs.filter((r) => r.role === "validator").length;
+  const versionRunCount = runs.length;
+  const versionWindowCount = allWindows.length || allMinerMetrics.length;
+
+  const currentStep = latestWindow?.globalStep ?? latestMiner?.globalStep ?? null;
+  const currentWindowNum = latestWindow?.window ?? latestMiner?.window ?? null;
 
   const improvementData = allWindows
     .filter((w) => w.lossOwnImprovement !== null)
@@ -239,16 +221,19 @@ export default function OverviewPage() {
       createdAt: w.createdAt,
     }));
 
+  const validatorVersion = validatorRun?.version ?? null;
   const recentEvents = [
     ...(slashData?.slashes ?? []).map((s) => ({
       ...s,
       evType: "slash" as const,
       reason: s.reason,
+      version: validatorVersion,
     })),
     ...(inactivityData?.inactivity ?? []).map((e) => ({
       ...e,
       evType: "inactivity" as const,
       reason: null as string | null,
+      version: validatorVersion,
     })),
   ]
     .sort((a, b) => b.window - a.window)
@@ -261,16 +246,7 @@ export default function OverviewPage() {
     <div className="space-y-6">
       {/* iOS-style title with version selector */}
       <div className="pt-2">
-        <VersionDropdown
-          title={runTitle}
-          versions={availableVersions}
-          currentVersion={currentVersion}
-          latestVersion={latestVersion}
-          isLatest={isLatest}
-          onSelect={(v) =>
-            setSelectedVersion(v === latestVersion ? null : v)
-          }
-        />
+        <VersionHeader title="Hone" />
         <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
           <span className="flex items-center">
             <LiveDot />
@@ -283,24 +259,16 @@ export default function OverviewPage() {
           </span>
           <span className="text-border">|</span>
           <span>Subnet 5</span>
-          {lw && (
+          {currentWindowNum != null && (
             <>
               <span className="text-border">|</span>
-              <span>Window {lw.window?.toLocaleString()}</span>
-              <span className="text-border">|</span>
-              <span>Step {lw.globalStep.toLocaleString()}</span>
+              <span>Window {currentWindowNum.toLocaleString()}</span>
             </>
           )}
-          {!lw && latestMiner && (
+          {currentStep != null && (
             <>
               <span className="text-border">|</span>
-              <span>
-                Window {latestMiner.window.toLocaleString()}
-              </span>
-              <span className="text-border">|</span>
-              <span>
-                Step {latestMiner.globalStep.toLocaleString()}
-              </span>
+              <span>Step {currentStep.toLocaleString()}</span>
             </>
           )}
         </div>
@@ -339,32 +307,32 @@ export default function OverviewPage() {
       {/* Dense stat tiles */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         <StatTile
-          label="Active Miners"
-          value={data.activeMiners}
+          label="Miners"
+          value={versionMinerCount}
           accent
-          info="Number of miner nodes currently participating in the training run."
+          info="Number of miner nodes in this version."
         />
         <StatTile
           label="Validators"
-          value={data.activeValidators}
-          info="Validator nodes that evaluate miner contributions and set weights."
+          value={versionValidatorCount}
+          info="Validator nodes in this version."
         />
         <StatTile
           label="Connected"
           value={onlineCount}
           sub={connected ? "Live" : "Reconnecting"}
           accent
-          info="Nodes connected via WebSocket right now, including miners and validators."
+          info="Nodes connected via WebSocket right now."
         />
         <StatTile
-          label="Total Windows"
-          value={data.totalWindows.toLocaleString()}
-          info="Cumulative training windows completed across all validator runs."
+          label="Windows"
+          value={versionWindowCount.toLocaleString()}
+          info="Training windows recorded for this version."
         />
         <StatTile
-          label="Active Runs"
-          value={data.activeRuns}
-          info="Total active training run processes (miners + validators combined)."
+          label="Runs"
+          value={versionRunCount}
+          info="Total training run processes for this version."
         />
 
         {lw && (
@@ -774,6 +742,9 @@ export default function OverviewPage() {
                       Type
                     </th>
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                      Version
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">
                       UID
                     </th>
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">
@@ -803,6 +774,9 @@ export default function OverviewPage() {
                         >
                           {ev.evType}
                         </Badge>
+                      </td>
+                      <td className="px-3 py-1.5 font-mono text-[10px] text-muted-foreground">
+                        {ev.version ? `v${ev.version}` : "\u2014"}
                       </td>
                       <td className="px-3 py-1.5 font-mono">
                         <Link

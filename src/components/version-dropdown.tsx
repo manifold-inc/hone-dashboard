@@ -8,6 +8,7 @@ export interface VersionInfo {
   version: string;
   count: number;
   latest: string;
+  modelSize?: string | null;
 }
 
 interface VersionDropdownProps {
@@ -74,7 +75,7 @@ export function VersionDropdown({
       </button>
 
       {open && versions.length > 0 && (
-        <div className="absolute left-0 z-50 mt-2 min-w-[220px] rounded-md border border-border/60 bg-card p-1 shadow-xl shadow-black/30 backdrop-blur-xl">
+        <div className="absolute left-0 z-50 mt-2 min-w-[260px] rounded-md border border-border/60 bg-card p-1 shadow-xl shadow-black/30 backdrop-blur-xl">
           {versions.map((v) => {
             const active = v.version === currentVersion;
             const isLt = v.version === latestVersion;
@@ -93,6 +94,11 @@ export function VersionDropdown({
                 )}
               >
                 <span className="font-mono font-medium">v{v.version}</span>
+                {v.modelSize && (
+                  <span className="text-[10px] text-muted-foreground/80">
+                    {v.modelSize}
+                  </span>
+                )}
                 {isLt && (
                   <Badge
                     variant="outline"

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/overview", label: "Overview" },
+  { href: "/projects", label: "Projects" },
   { href: "/miners", label: "Miners" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/runs", label: "Runs" },
@@ -43,7 +44,7 @@ export function FloatingNav() {
               className={cn(
                 "rounded-full px-3 py-1.5 text-xs transition-colors",
                 active
-                  ? "bg-foreground text-background font-medium"
+                  ? "bg-primary text-primary-foreground font-medium"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent"
               )}
             >
@@ -58,7 +59,8 @@ export function FloatingNav() {
           href="https://github.com"
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+          className="rounded-full px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-80"
+          style={{ backgroundColor: "rgba(171, 102, 255, 0.15)", color: "#AB66FF" }}
         >
           GitHub
         </a>

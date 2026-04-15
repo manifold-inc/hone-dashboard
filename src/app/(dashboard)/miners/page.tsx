@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getRuns, getMinerMetrics } from "@/lib/api";
+import { getMinerMetrics } from "@/lib/api";
 import {
   Table,
   TableBody,
@@ -14,7 +14,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { LivenessDot } from "@/components/liveness-dot";
 import { RunStatusBadge } from "@/components/run-status-badge";
-import { VersionDropdown } from "@/components/version-dropdown";
+import { VersionHeader } from "@/components/version-header";
+import { useVersion } from "@/components/version-context";
 import Link from "next/link";
 
 function truncateHotkey(hotkey: string): string {
@@ -102,42 +103,9 @@ function MinerRow({
 }
 
 export default function MinersPage() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["runs-miners-all"],
-    queryFn: () => getRuns({ limit: 100, role: "miner" }),
-  });
+  const { allRuns, currentVersion } = useVersion();
 
-  const allMiners = data?.runs ?? [];
-
-  const availableVersions = useMemo(() => {
-    const vset = new Map<
-      string,
-      { version: string; count: number; latest: string }
-    >();
-    for (const r of allMiners) {
-      if (!r.version) continue;
-      const existing = vset.get(r.version);
-      if (existing) {
-        existing.count++;
-        if (r.lastSeenAt > existing.latest) existing.latest = r.lastSeenAt;
-      } else {
-        vset.set(r.version, {
-          version: r.version,
-          count: 1,
-          latest: r.lastSeenAt,
-        });
-      }
-    }
-    return Array.from(vset.values()).sort((a, b) =>
-      b.latest.localeCompare(a.latest)
-    );
-  }, [allMiners]);
-
-  const latestVersion = availableVersions[0]?.version ?? null;
-  const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
-  const currentVersion = selectedVersion ?? latestVersion;
-  const isLatest = currentVersion === latestVersion;
-
+  const allMiners = allRuns.filter((r) => r.role === "miner");
   const miners = currentVersion
     ? allMiners.filter((r) => r.version === currentVersion)
     : allMiners;
@@ -154,35 +122,23 @@ export default function MinersPage() {
         map.set(r.uid, r);
       }
     }
-    return Array.from(map.values()).sort((a, b) => (a.uid ?? 0) - (b.uid ?? 0));
+    return Array.from(map.values()).sort(
+      (a, b) => (a.uid ?? 0) - (b.uid ?? 0)
+    );
   }, [miners]);
-
-  const runTitle = currentVersion ? `Miners v${currentVersion}` : "Miners";
 
   return (
     <div className="space-y-6">
       <div>
-        <VersionDropdown
-          title={runTitle}
-          versions={availableVersions}
-          currentVersion={currentVersion}
-          latestVersion={latestVersion}
-          isLatest={isLatest}
-          onSelect={(v) =>
-            setSelectedVersion(v === latestVersion ? null : v)
-          }
-        />
+        <VersionHeader title="Miners" />
         <p className="mt-1.5 text-sm text-muted-foreground">
-          {minersByUid.length} unique miner{minersByUid.length !== 1 ? "s" : ""}{" "}
-          across {miners.length} run{miners.length !== 1 ? "s" : ""}
+          {minersByUid.length} unique miner
+          {minersByUid.length !== 1 ? "s" : ""} across {miners.length} run
+          {miners.length !== 1 ? "s" : ""}
         </p>
       </div>
 
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground py-12 text-center">
-          Loading...
-        </p>
-      ) : minersByUid.length === 0 ? (
+      {minersByUid.length === 0 ? (
         <p className="text-sm text-muted-foreground py-12 text-center">
           No miners registered yet
         </p>

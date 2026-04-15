@@ -1,7 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getRuns, getSlashEvents, getInactivityEvents } from "@/lib/api";
+import { getSlashEvents, getInactivityEvents } from "@/lib/api";
+import { useVersion } from "@/components/version-context";
+import { VersionHeader } from "@/components/version-header";
 import {
   Table,
   TableBody,
@@ -33,12 +35,13 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function RunsPage() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["runs"],
-    queryFn: () => getRuns({ limit: 100 }),
-  });
+  const { allRuns, currentVersion } = useVersion();
 
-  const validatorRun = data?.runs?.find((r) => r.role === "validator");
+  const filteredRuns = currentVersion
+    ? allRuns.filter((r) => r.version === currentVersion)
+    : allRuns;
+
+  const validatorRun = filteredRuns.find((r) => r.role === "validator");
 
   const { data: slashData } = useQuery({
     queryKey: ["slashes-runs", validatorRun?.id],
@@ -53,16 +56,19 @@ export default function RunsPage() {
     enabled: validatorRun != null,
   });
 
+  const validatorVersion = validatorRun?.version ?? null;
   const recentEvents = [
     ...(slashData?.slashes ?? []).map((s) => ({
       ...s,
       evType: "slash" as const,
       reason: s.reason,
+      version: validatorVersion,
     })),
     ...(inactivityData?.inactivity ?? []).map((e) => ({
       ...e,
       evType: "inactivity" as const,
       reason: null as string | null,
+      version: validatorVersion,
     })),
   ]
     .sort((a, b) => b.window - a.window)
@@ -71,15 +77,13 @@ export default function RunsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Training Runs</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          All registered validator and miner runs
+        <VersionHeader title="Runs" />
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          {filteredRuns.length} run{filteredRuns.length !== 1 ? "s" : ""} registered
         </p>
       </div>
 
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground py-12 text-center">Loading...</p>
-      ) : !data || data.runs.length === 0 ? (
+      {filteredRuns.length === 0 ? (
         <p className="text-sm text-muted-foreground py-12 text-center">
           No runs recorded yet
         </p>
@@ -98,7 +102,7 @@ export default function RunsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.runs.map((run) => (
+              {filteredRuns.map((run) => (
                 <TableRow key={run.id} className="cursor-pointer hover:bg-accent/30">
                   <TableCell>
                     <Link href={`/runs/${run.id}`} className="flex items-center gap-2">
@@ -186,6 +190,9 @@ export default function RunsPage() {
                       Type
                     </th>
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                      Version
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">
                       UID
                     </th>
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">
@@ -215,6 +222,9 @@ export default function RunsPage() {
                         >
                           {ev.evType}
                         </Badge>
+                      </td>
+                      <td className="px-3 py-1.5 font-mono text-[10px] text-muted-foreground">
+                        {ev.version ? `v${ev.version}` : "\u2014"}
                       </td>
                       <td className="px-3 py-1.5 font-mono">
                         <Link

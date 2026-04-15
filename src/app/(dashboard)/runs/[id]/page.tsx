@@ -11,6 +11,7 @@ import {
   getSyncScores,
   getSlashEvents,
   getInactivityEvents,
+  getGatherStatus,
 } from "@/lib/api";
 import { MetricCard } from "@/components/metric-card";
 import { RunStatusBadge } from "@/components/run-status-badge";
@@ -83,6 +84,12 @@ export default function RunDetailPage({
     enabled: !!runData && runData.run.role === "validator",
   });
 
+  const { data: gatherData } = useQuery({
+    queryKey: ["gather-status", id],
+    queryFn: () => getGatherStatus(id, { limit: 2000 }),
+    enabled: !!runData && runData.run.role === "validator",
+  });
+
   if (runLoading) {
     return (
       <div className="flex items-center justify-center py-32">
@@ -107,6 +114,7 @@ export default function RunDetailPage({
   const syncScores = syncData?.syncScores ?? [];
   const slashes = slashData?.slashes ?? [];
   const inactivityEvts = inactivityData?.inactivity ?? [];
+  const gatherEntries = gatherData?.gatherStatus ?? [];
 
   const isValidator = run.role === "validator";
 
@@ -205,6 +213,7 @@ export default function RunDetailPage({
           <TabsTrigger value="training">Training</TabsTrigger>
           {isValidator && <TabsTrigger value="network">Network</TabsTrigger>}
           {isValidator && <TabsTrigger value="scores">Scores</TabsTrigger>}
+          {isValidator && <TabsTrigger value="gather">Gather</TabsTrigger>}
           <TabsTrigger value="timing">Timing</TabsTrigger>
           {isValidator && <TabsTrigger value="gradients">Gradients</TabsTrigger>}
           {isValidator && <TabsTrigger value="events">Events</TabsTrigger>}
@@ -365,6 +374,71 @@ export default function RunDetailPage({
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Outer step diagnostics */}
+              <div className="grid gap-4 lg:grid-cols-3">
+                <Card className="bg-card/60">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Outer Step Applied
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-1">
+                      {miners.slice(-50).map((m, i) => (
+                        <div
+                          key={i}
+                          title={`Window ${m.window}: ${m.outerStepApplied ? "applied" : "skipped"}`}
+                          className={`w-3 h-3 rounded-sm ${
+                            m.outerStepApplied
+                              ? "bg-emerald-500"
+                              : m.outerStepApplied === false
+                                ? "bg-red-500"
+                                : "bg-muted"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Last {Math.min(miners.length, 50)} windows
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-card/60">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Compressed Size (MB)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <TimeSeriesChart
+                      data={miners.filter((m) => m.compressedSizeMb != null)}
+                      series={[
+                        { key: "compressedSizeMb", label: "Size (MB)" },
+                      ]}
+                      height={180}
+                    />
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-card/60">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Skipped Peers
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <TimeSeriesChart
+                      data={miners.filter((m) => m.skippedPeers != null)}
+                      series={[
+                        { key: "skippedPeers", label: "Skipped" },
+                      ]}
+                      height={180}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
             </>
           )}
 
@@ -499,6 +573,117 @@ export default function RunDetailPage({
                   />
                 </CardContent>
               </Card>
+            )}
+          </TabsContent>
+        )}
+
+        {/* ──── Gather Tab ──── */}
+        {isValidator && (
+          <TabsContent value="gather" className="space-y-6">
+            {gatherEntries.length > 0 ? (
+              (() => {
+                const latestWindow = Math.max(
+                  ...gatherEntries.map((g) => g.window),
+                );
+                const latestEntries = gatherEntries.filter(
+                  (g) => g.window === latestWindow,
+                );
+                const successCount = latestEntries.filter(
+                  (g) => g.status === "success",
+                ).length;
+                const total = latestEntries.length;
+                const byStatus = latestEntries.reduce(
+                  (acc, g) => {
+                    acc[g.status] = (acc[g.status] || 0) + 1;
+                    return acc;
+                  },
+                  {} as Record<string, number>,
+                );
+                return (
+                  <>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                      <MetricCard
+                        label="Gathered"
+                        value={`${successCount}/${total}`}
+                      />
+                      {Object.entries(byStatus)
+                        .filter(([s]) => s !== "success")
+                        .map(([status, count]) => (
+                          <MetricCard
+                            key={status}
+                            label={status.charAt(0).toUpperCase() + status.slice(1)}
+                            value={count}
+                          />
+                        ))}
+                      <MetricCard
+                        label="Window"
+                        value={latestWindow}
+                      />
+                    </div>
+                    <Card className="bg-card/60">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                          Per-UID Gather Status (window {latestWindow})
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="rounded-md border border-border overflow-auto">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="border-b border-border">
+                                <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                                  UID
+                                </th>
+                                <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                                  Status
+                                </th>
+                                <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                                  Reason
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {latestEntries
+                                .sort((a, b) => a.uid - b.uid)
+                                .map((g) => (
+                                  <tr
+                                    key={g.id}
+                                    className="border-b border-border/50"
+                                  >
+                                    <td className="px-3 py-1.5 font-mono">
+                                      {g.uid}
+                                    </td>
+                                    <td className="px-3 py-1.5">
+                                      <Badge
+                                        variant="outline"
+                                        className={
+                                          g.status === "success"
+                                            ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[10px] px-1.5 py-0"
+                                            : g.status === "skipped"
+                                              ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/30 text-[10px] px-1.5 py-0"
+                                              : "bg-red-500/15 text-red-400 border-red-500/30 text-[10px] px-1.5 py-0"
+                                        }
+                                      >
+                                        {g.status}
+                                      </Badge>
+                                    </td>
+                                    <td className="px-3 py-1.5 text-muted-foreground">
+                                      {g.reason ?? "\u2014"}
+                                    </td>
+                                  </tr>
+                                ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                );
+              })()
+            ) : (
+              <p className="py-12 text-center text-sm text-muted-foreground">
+                No gather data recorded yet
+              </p>
             )}
           </TabsContent>
         )}

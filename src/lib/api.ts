@@ -8,9 +8,11 @@ import type {
   SlashEventRow,
   InactivityEventRow,
   InnerStepRow,
+  GatherStatusRow,
   LeaderboardEntry,
   UidDetail,
   NetworkStats,
+  ProjectVersionRow,
 } from "./types";
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -29,15 +31,27 @@ export function getNetworkStats() {
   return fetchJson<NetworkStats>("/api/stats/network");
 }
 
-export function getRuns(params?: { role?: string; limit?: number; offset?: number }) {
+export function getRuns(params?: {
+  role?: string;
+  project?: string;
+  version?: string;
+  limit?: number;
+  offset?: number;
+}) {
   const q = new URLSearchParams();
   if (params?.role) q.set("role", params.role);
+  if (params?.project) q.set("project", params.project);
+  if (params?.version) q.set("version", params.version);
   if (params?.limit) q.set("limit", String(params.limit));
   if (params?.offset) q.set("offset", String(params.offset));
   const qs = q.toString();
   return fetchJson<{ runs: TrainingRun[]; total: number }>(
     `/api/runs${qs ? `?${qs}` : ""}`
   );
+}
+
+export function getProjects() {
+  return fetchJson<{ projects: ProjectVersionRow[] }>("/api/runs/projects");
 }
 
 export function getRun(id: string) {
@@ -142,4 +156,26 @@ export function getInnerSteps(id: string, params?: { window?: number; limit?: nu
   return fetchJson<{ innerSteps: InnerStepRow[] }>(
     `/api/runs/${id}/inner-steps${qs ? `?${qs}` : ""}`
   );
+}
+
+export function getGatherStatus(id: string, params?: { window?: number; limit?: number }) {
+  const q = new URLSearchParams();
+  if (params?.window !== undefined) q.set("window", String(params.window));
+  if (params?.limit) q.set("limit", String(params.limit));
+  const qs = q.toString();
+  return fetchJson<{ gatherStatus: GatherStatusRow[] }>(
+    `/api/runs/${id}/gather-status${qs ? `?${qs}` : ""}`
+  );
+}
+
+export async function getProjectBlog(project: string): Promise<string | null> {
+  const branch = process.env.NEXT_PUBLIC_GITHUB_CONTENT_BRANCH || "refactor";
+  const url = `https://raw.githubusercontent.com/manifold-inc/hone/${branch}/msg/${project}/README.md`;
+  try {
+    const res = await fetch(url, { next: { revalidate: 300 } } as RequestInit);
+    if (!res.ok) return null;
+    return res.text();
+  } catch {
+    return null;
+  }
 }

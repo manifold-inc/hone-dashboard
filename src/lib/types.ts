@@ -6,6 +6,8 @@ export interface TrainingRun {
   netuid: number;
   uid: number | null;
   version: string | null;
+  project: string | null;
+  modelSize: string | null;
   config: Record<string, unknown> | null;
   startedAt: string;
   lastSeenAt: string;
@@ -64,6 +66,17 @@ export interface UidScore {
   openskillOrdinal: number | null;
   finalScore: number | null;
   weight: number | null;
+  lossOwnBefore: number | null;
+  lossOwnAfter: number | null;
+  lossRandomBefore: number | null;
+  lossRandomAfter: number | null;
+  improvementOwn: number | null;
+  improvementRandom: number | null;
+  evalStatus: "evaluated" | "skipped" | "invalid" | "excluded" | null;
+  evalSkipReason: string | null;
+  consecutiveNegatives: number | null;
+  negativeFrequency: number | null;
+  bmaThresholdApplied: boolean | null;
   createdAt: string;
 }
 
@@ -89,6 +102,13 @@ export interface MinerMetricsRow {
   gradientTotalElements: number | null;
   cpuUsage: number | null;
   gpuUtilization: number | null;
+  outerStepApplied: boolean | null;
+  compressedSizeMb: number | null;
+  uploadSizeMb: number | null;
+  offloadTime: number | null;
+  restoreTime: number | null;
+  skippedPeers: number | null;
+  gatherPeerList: number[] | null;
   createdAt: string;
 }
 
@@ -136,6 +156,16 @@ export interface InactivityEventRow {
   uid: number;
   scoreBefore: number | null;
   scoreAfter: number | null;
+  createdAt: string;
+}
+
+export interface GatherStatusRow {
+  id: number;
+  runId: number;
+  window: number;
+  uid: number;
+  status: "success" | "skipped" | "timeout" | "failed" | "excluded";
+  reason: string | null;
   createdAt: string;
 }
 
@@ -196,4 +226,22 @@ export interface NetworkStats {
   totalWindows: number;
   latestWindow: RecentWindowSnapshot | null;
   recentLoss: RecentWindowSnapshot[];
+}
+
+export interface ProjectVersionRow {
+  project: string;
+  version: string | null;
+  modelSize: string | null;
+  lastSeen: string;
+  runCount: number;
+}
+
+export interface ProjectInfo {
+  project: string;
+  versions: {
+    version: string | null;
+    modelSize: string | null;
+    lastSeen: string;
+    runCount: number;
+  }[];
 }
