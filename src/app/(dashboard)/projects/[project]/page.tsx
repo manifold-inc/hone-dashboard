@@ -65,9 +65,18 @@ export default function ProjectDetailPage() {
     (r) => r.config && Object.keys(r.config).length > 0
   );
 
+  const bgImage = `/images/${projectName.toLowerCase().replace(/[\s_]+/g, "-")}-bg.png`;
+
   return (
-    <div>
-      <div className="flex items-center gap-3 mb-1">
+    <div className="relative">
+      {/* Fixed background image */}
+      <div
+        className="pointer-events-none fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat opacity-60"
+        style={{ backgroundImage: `url(${bgImage})` }}
+      />
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-gradient-to-b from-background/40 via-background/70 to-background" />
+
+      <div className="flex items-center gap-3 mb-2">
         <Link
           href="/projects"
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -121,7 +130,7 @@ export default function ProjectDetailPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
           {blog && (
-            <Card>
+            <Card className="bg-card/70 backdrop-blur-md">
               <CardContent className="pt-6">
                 <MarkdownRenderer content={blog} />
               </CardContent>
@@ -129,7 +138,7 @@ export default function ProjectDetailPage() {
           )}
 
           {!blog && (
-            <Card>
+            <Card className="bg-card/70 backdrop-blur-md">
               <CardContent className="py-12 text-center text-sm text-muted-foreground">
                 No writeup available for this project yet.
               </CardContent>
@@ -138,7 +147,7 @@ export default function ProjectDetailPage() {
         </div>
 
         <div className="space-y-6">
-          <Card>
+          <Card className="bg-card/70 backdrop-blur-md">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Version Info</CardTitle>
             </CardHeader>
@@ -169,7 +178,7 @@ export default function ProjectDetailPage() {
           </Card>
 
           {runsData?.runs && runsData.runs.length > 0 && (
-            <Card>
+            <Card className="bg-card/70 backdrop-blur-md">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm">Recent Runs</CardTitle>
               </CardHeader>
@@ -198,7 +207,7 @@ export default function ProjectDetailPage() {
           )}
 
           {latestRunWithConfig?.config && (
-            <Card>
+            <Card className="bg-card/70 backdrop-blur-md">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm">Hyperparameters</CardTitle>
               </CardHeader>

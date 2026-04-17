@@ -117,7 +117,7 @@ export function MultiMinerLossChart({
           {totalSteps} steps
         </span>
       </div>
-      <ResponsiveContainer width="100%" height={height}>
+      <ResponsiveContainer width="100%" height={height} minWidth={0} minHeight={0}>
         <LineChart
           data={chartData}
           margin={{ top: 4, right: 16, bottom: 0, left: 0 }}

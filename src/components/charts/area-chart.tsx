@@ -43,7 +43,7 @@ export function StackedAreaChart({
   }
 
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ResponsiveContainer width="100%" height={height} minWidth={0} minHeight={0}>
       <RechartsAreaChart
         data={data}
         margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
