@@ -19,6 +19,7 @@ import { useLiveContext } from "@/components/live-update-provider";
 import { cn } from "@/lib/utils";
 import { useVersion } from "@/components/version-context";
 import { VersionHeader } from "@/components/version-header";
+import { TrainingProgressBar } from "@/components/training-progress-bar";
 
 function InfoTooltip({ text }: { text: string }) {
   const [show, setShow] = useState(false);
@@ -213,6 +214,16 @@ export default function OverviewPage() {
   const currentStep = latestWindow?.globalStep ?? latestMiner?.globalStep ?? null;
   const currentWindowNum = latestWindow?.window ?? latestMiner?.window ?? null;
 
+  const cfg = (validatorRun?.config ?? minerRun?.config ?? null) as
+    | { target_batch_size?: number; sequence_length?: number }
+    | null;
+  const tbs = cfg?.target_batch_size ?? null;
+  const seq = cfg?.sequence_length ?? null;
+  const tokensDone =
+    currentStep != null && tbs != null && seq != null
+      ? currentStep * tbs * seq
+      : null;
+
   const improvementData = allWindows
     .filter((w) => w.lossOwnImprovement !== null)
     .map((w) => ({
@@ -244,6 +255,13 @@ export default function OverviewPage() {
 
   return (
     <div className="space-y-6">
+      <TrainingProgressBar
+        tokensDone={tokensDone}
+        tokensTarget={2e12}
+        version={currentVersion}
+        globalStep={currentStep}
+      />
+
       {/* iOS-style title with version selector */}
       <div className="pt-2">
         <VersionHeader title="Hone" />

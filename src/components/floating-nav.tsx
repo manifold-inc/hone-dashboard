@@ -57,7 +57,7 @@ export function FloatingNav() {
         <div className="mx-1 h-4 w-px bg-border/60" />
 
         <a
-          href="https://github.com"
+          href="https://github.com/manifold-inc/hone"
           target="_blank"
           rel="noopener noreferrer"
           className="rounded-full px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-80"

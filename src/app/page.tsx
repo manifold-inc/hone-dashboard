@@ -35,7 +35,7 @@ export default function LandingPage() {
               Open Dashboard
             </Link>
             <a
-              href="https://github.com"
+              href="https://github.com/manifold-inc/hone"
               target="_blank"
               rel="noopener noreferrer"
               className="rounded border border-border bg-background/50 px-5 py-2.5 text-sm font-medium text-foreground backdrop-blur-sm transition-colors hover:bg-accent"
