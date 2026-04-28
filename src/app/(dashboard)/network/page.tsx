@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   getLeaderboard,
@@ -22,6 +22,12 @@ import { useVersion } from "@/components/version-context";
 import { VersionHeader } from "@/components/version-header";
 import { TrainingProgressBar } from "@/components/training-progress-bar";
 import { MetricExplainer } from "@/components/metric-explainer";
+import type {
+  WindowMetrics,
+  MinerMetricsRow,
+  SlashEventRow,
+  InactivityEventRow,
+} from "@/lib/types";
 import { Glossary } from "@/components/glossary";
 import { NodeAvatar } from "@/components/node-avatar";
 import {
@@ -275,67 +281,87 @@ export default function NetworkPage() {
     ? allRuns.filter((r) => r.version === currentVersion)
     : allRuns;
 
-  const validatorRun = runs.find((r) => r.role === "validator");
-
-  const minerRunsByUid = new Map<number, (typeof runs)[0]>();
-  for (const r of runs) {
-    if (r.role !== "miner" || r.uid === null) continue;
-    const existing = minerRunsByUid.get(r.uid);
-    if (!existing || new Date(r.lastSeenAt) > new Date(existing.lastSeenAt)) {
-      minerRunsByUid.set(r.uid, r);
-    }
-  }
-  const minerRuns = Array.from(minerRunsByUid.values());
-  const minerRun = minerRuns[0];
-
-  const validatorRunId = validatorRun?.id;
-  const minerRunId = minerRun?.id;
-
-  const { data: windowsData } = useQuery({
-    queryKey: ["windows-full", validatorRunId],
-    queryFn: () => getWindows(String(validatorRunId!), { limit: 2000 }),
-    enabled: validatorRunId != null,
-  });
-
-  const { data: minerData } = useQuery({
-    queryKey: ["miner-metrics-network", minerRunId],
-    queryFn: () => getMinerMetrics(String(minerRunId!), { limit: 2000 }),
-    enabled: minerRunId != null,
-  });
-
-  // Pull metrics for ALL miner runs so the headline loss can be aggregated
-  // across the network. We use a single secondary query per miner; React
-  // Query dedupes since most pages have a small number of miners.
-  const minerRunIds = useMemo(
-    () => minerRuns.map((r) => r.id).join(","),
-    [minerRuns]
-  );
-  const { data: networkLossData } = useQuery({
-    queryKey: ["network-miner-loss", minerRunIds],
-    queryFn: async () => {
-      const all = await Promise.all(
-        minerRuns.map((r) =>
-          getMinerMetrics(String(r.id), { limit: 500 }).then(
-            (d) => d.miners ?? [],
-          ),
+  // Validator runs: keep ALL of them, not just the most recent. The
+  // shared model state survives a validator restart, so the loss series
+  // is continuous across runs even though each restart spawns a new
+  // run_id. We aggregate windows across all runs below.
+  const validatorRuns = useMemo(
+    () =>
+      runs
+        .filter((r) => r.role === "validator")
+        .sort(
+          (a, b) =>
+            new Date(a.startedAt).getTime() -
+            new Date(b.startedAt).getTime(),
         ),
-      );
-      return all.flat();
-    },
-    enabled: minerRuns.length > 0,
+    [runs],
+  );
+
+  // Miner runs: keep ALL runs per UID (not deduplicated), so a miner's
+  // full history follows it across restarts. Grouping is done per-UID
+  // when feeding the multi-miner chart.
+  const minerRuns = useMemo(
+    () => runs.filter((r) => r.role === "miner" && r.uid !== null),
+    [runs],
+  );
+
+  // Latest run per miner UID is still useful for the leaderboard / KPI
+  // summaries that just want "is this UID alive right now".
+  const latestMinerRunByUid = useMemo(() => {
+    const map = new Map<number, (typeof runs)[0]>();
+    for (const r of minerRuns) {
+      const uid = r.uid as number;
+      const existing = map.get(uid);
+      if (
+        !existing ||
+        new Date(r.lastSeenAt) > new Date(existing.lastSeenAt)
+      ) {
+        map.set(uid, r);
+      }
+    }
+    return map;
+  }, [minerRuns]);
+
+  // Fetch windows from EVERY validator run in parallel and merge them.
+  // React Query dedupes within the page; the merge below dedupes across
+  // restarts via (window, globalStep).
+  const validatorWindowQueries = useQueries({
+    queries: validatorRuns.map((run) => ({
+      queryKey: ["windows-full", run.id],
+      queryFn: () => getWindows(String(run.id), { limit: 2000 }),
+    })),
   });
 
-  const { data: slashData } = useQuery({
-    queryKey: ["slashes-network", validatorRunId],
-    queryFn: () => getSlashEvents(String(validatorRunId!), { limit: 30 }),
-    enabled: validatorRunId != null,
+  // Fetch metrics from EVERY miner run in parallel for the network-level
+  // aggregated loss chart and the multi-miner inner-step chart. Same
+  // logic as validator: across-restart history is part of the answer.
+  const minerMetricsQueries = useQueries({
+    queries: minerRuns.map((run) => ({
+      queryKey: ["miner-metrics-network", run.id],
+      queryFn: () => getMinerMetrics(String(run.id), { limit: 2000 }),
+    })),
   });
 
-  const { data: inactivityData } = useQuery({
-    queryKey: ["inactivity-network", validatorRunId],
-    queryFn: () => getInactivityEvents(String(validatorRunId!), { limit: 30 }),
-    enabled: validatorRunId != null,
+  // Slash + inactivity events also live per validator run. Pull from all
+  // validator runs and merge by id (events are uniquely identified by
+  // the API regardless of which run reported them).
+  const validatorSlashQueries = useQueries({
+    queries: validatorRuns.map((run) => ({
+      queryKey: ["slashes-network", run.id],
+      queryFn: () => getSlashEvents(String(run.id), { limit: 100 }),
+    })),
   });
+  const validatorInactivityQueries = useQueries({
+    queries: validatorRuns.map((run) => ({
+      queryKey: ["inactivity-network", run.id],
+      queryFn: () => getInactivityEvents(String(run.id), { limit: 100 }),
+    })),
+  });
+
+  // The "primary" validator/miner run pointers used for config and
+  // version metadata only (not for charting).
+  const validatorRun = validatorRuns[validatorRuns.length - 1];
+  const minerRun = minerRuns[0];
 
   const { data: evalResultsData } = useQuery({
     queryKey: ["eval-results", currentVersion],
@@ -353,11 +379,59 @@ export default function NetworkPage() {
     enabled: !!currentVersion,
   });
 
-  const allWindows = (windowsData?.windows ?? []).slice().reverse();
-  const allMinerMetrics = (minerData?.miners ?? []).slice().reverse();
+  // Merge windows from every validator run into one continuous series.
+  // Two runs from the same physical validator (across a restart) report
+  // overlapping (window, globalStep) pairs; we dedupe to the most-recent
+  // ``createdAt`` so a re-evaluation supersedes its predecessor. The
+  // result is sorted ascending by globalStep, which is the chart x-axis.
+  const allWindows = useMemo<WindowMetrics[]>(() => {
+    const byKey = new Map<string, WindowMetrics>();
+    for (const q of validatorWindowQueries) {
+      const windows = q.data?.windows ?? [];
+      for (const w of windows) {
+        const key = `${w.window}-${w.globalStep}`;
+        const existing = byKey.get(key);
+        if (
+          !existing ||
+          new Date(w.createdAt) > new Date(existing.createdAt)
+        ) {
+          byKey.set(key, w);
+        }
+      }
+    }
+    return Array.from(byKey.values()).sort(
+      (a, b) => a.globalStep - b.globalStep,
+    );
+  }, [validatorWindowQueries]);
+
+  // Same merge for miner-side metrics. Within a single (uid, window) we
+  // keep the latest reading; across UIDs we keep one row per (uid,
+  // window) so the loss aggregation has the right per-miner sample
+  // count regardless of how many times a UID restarted.
+  const allMinerMetrics = useMemo<MinerMetricsRow[]>(() => {
+    const byKey = new Map<string, MinerMetricsRow>();
+    for (let i = 0; i < minerRuns.length; i++) {
+      const run = minerRuns[i];
+      const rows = minerMetricsQueries[i]?.data?.miners ?? [];
+      for (const m of rows) {
+        const key = `${run.uid}-${m.window}`;
+        const existing = byKey.get(key);
+        if (
+          !existing ||
+          new Date(m.createdAt) > new Date(existing.createdAt)
+        ) {
+          byKey.set(key, m);
+        }
+      }
+    }
+    return Array.from(byKey.values()).sort(
+      (a, b) => a.window - b.window || a.globalStep - b.globalStep,
+    );
+  }, [minerRuns, minerMetricsQueries]);
+
   const networkAggregated = useMemo(
-    () => aggregateMinerLossByWindow(networkLossData ?? []),
-    [networkLossData]
+    () => aggregateMinerLossByWindow(allMinerMetrics),
+    [allMinerMetrics]
   );
   const derivedWindows = useMemo(
     () => deriveWindowSeries(allWindows),
@@ -368,8 +442,8 @@ export default function NetworkPage() {
   const latestWindow = allWindows[allWindows.length - 1] ?? null;
   const lw = latestWindow;
 
-  const versionMinerCount = minerRuns.length;
-  const versionValidatorCount = runs.filter((r) => r.role === "validator").length;
+  const versionMinerCount = latestMinerRunByUid.size;
+  const versionValidatorCount = validatorRuns.length;
 
   const currentStep = latestWindow?.globalStep ?? latestMiner?.globalStep ?? null;
   const currentWindowNum = latestWindow?.window ?? latestMiner?.window ?? null;
@@ -407,14 +481,34 @@ export default function NetworkPage() {
   );
 
   const validatorVersion = validatorRun?.version ?? null;
+
+  // Merge slash + inactivity events across all validator runs. The API
+  // gives each event a stable id, so dedupe is exact: an event reported
+  // by run A and re-reported after a restart by run B counts once.
+  const allSlashes = useMemo<SlashEventRow[]>(() => {
+    const byId = new Map<number, SlashEventRow>();
+    for (const q of validatorSlashQueries) {
+      for (const s of q.data?.slashes ?? []) byId.set(s.id, s);
+    }
+    return Array.from(byId.values()).sort((a, b) => b.window - a.window);
+  }, [validatorSlashQueries]);
+
+  const allInactivity = useMemo<InactivityEventRow[]>(() => {
+    const byId = new Map<number, InactivityEventRow>();
+    for (const q of validatorInactivityQueries) {
+      for (const e of q.data?.inactivity ?? []) byId.set(e.id, e);
+    }
+    return Array.from(byId.values()).sort((a, b) => b.window - a.window);
+  }, [validatorInactivityQueries]);
+
   const recentEvents = [
-    ...(slashData?.slashes ?? []).map((s) => ({
+    ...allSlashes.map((s) => ({
       ...s,
       evType: "slash" as const,
       reason: s.reason,
       version: validatorVersion,
     })),
-    ...(inactivityData?.inactivity ?? []).map((e) => ({
+    ...allInactivity.map((e) => ({
       ...e,
       evType: "inactivity" as const,
       reason: null as string | null,
@@ -436,11 +530,11 @@ export default function NetworkPage() {
     () =>
       networkHealth({
         windows: allWindows,
-        slashes: slashData?.slashes ?? [],
+        slashes: allSlashes,
         connected,
         lookback: 30,
       }),
-    [allWindows, slashData?.slashes, connected]
+    [allWindows, allSlashes, connected]
   );
 
   const healthSparkline = useMemo(

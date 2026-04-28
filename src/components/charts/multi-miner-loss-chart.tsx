@@ -69,6 +69,25 @@ export function MultiMinerLossChart({
   });
 
   const { chartData, seriesKeys, totalSteps } = useMemo(() => {
+    // Group every run by its UID so a UID with multiple restarts has a
+    // single line whose data spans every run. Without this, a miner
+    // restart silently drops all inner-step history reported under the
+    // previous run id.
+    const queriesByUid = new Map<
+      number,
+      { results: typeof queries }
+    >();
+    for (let i = 0; i < minerRuns.length; i++) {
+      const run = minerRuns[i];
+      const uid = run.uid ?? run.id;
+      let bucket = queriesByUid.get(uid);
+      if (!bucket) {
+        bucket = { results: [] };
+        queriesByUid.set(uid, bucket);
+      }
+      bucket.results.push(queries[i]);
+    }
+
     const keys: {
       key: string;
       uid: number;
@@ -76,42 +95,58 @@ export function MultiMinerLossChart({
       strokeDasharray: string | undefined;
     }[] = [];
     const stepMap = new Map<number, Record<string, unknown>>();
-    const seenUids = new Set<number>();
     let colorIdx = 0;
+    let total = 0;
 
-    for (let i = 0; i < minerRuns.length; i++) {
-      const run = minerRuns[i];
-      const result = queries[i];
-      const steps = result.data?.innerSteps ?? [];
-      if (steps.length === 0) continue;
+    // Sort UIDs so palette assignment is stable across renders even when
+    // run order shuffles.
+    const sortedUids = Array.from(queriesByUid.keys()).sort((a, b) => a - b);
 
-      const uid = run.uid ?? run.id;
-      if (seenUids.has(uid)) continue;
-      seenUids.add(uid);
+    for (const uid of sortedUids) {
+      const bucket = queriesByUid.get(uid)!;
+      // Dedupe inner steps within a UID by globalStep, preferring the
+      // most recently reported value when two runs both saw the same
+      // step (a restart re-reading from a checkpoint).
+      const stepsByGlobal = new Map<
+        number,
+        { ts: number; loss: number; createdAt: string }
+      >();
+      for (const result of bucket.results) {
+        const steps = result.data?.innerSteps ?? [];
+        total += steps.length;
+        for (const pt of steps) {
+          if (pt.loss === null) continue;
+          const ts = Math.floor(new Date(pt.createdAt).getTime() / 1000);
+          const existing = stepsByGlobal.get(pt.globalStep);
+          if (!existing || existing.createdAt < pt.createdAt) {
+            stepsByGlobal.set(pt.globalStep, {
+              ts,
+              loss: pt.loss,
+              createdAt: pt.createdAt,
+            });
+          }
+        }
+      }
+      if (stepsByGlobal.size === 0) continue;
 
       const lossKey = `uid_${uid}`;
       const { stroke, strokeDasharray } = minerStrokeFor(colorIdx);
       colorIdx++;
       keys.push({ key: lossKey, uid, stroke, strokeDasharray });
 
-      for (const pt of steps) {
-        if (pt.loss === null) continue;
-        const ts = Math.floor(new Date(pt.createdAt).getTime() / 1000);
-        let row = stepMap.get(ts);
+      for (const point of stepsByGlobal.values()) {
+        let row = stepMap.get(point.ts);
         if (!row) {
-          row = { ts };
-          stepMap.set(ts, row);
+          row = { ts: point.ts };
+          stepMap.set(point.ts, row);
         }
-        row[lossKey] = pt.loss;
+        row[lossKey] = point.loss;
       }
     }
 
     const data = Array.from(stepMap.values()).sort(
       (a, b) => (a.ts as number) - (b.ts as number)
     );
-
-    let total = 0;
-    for (const q of queries) total += q.data?.innerSteps?.length ?? 0;
 
     return { chartData: data, seriesKeys: keys, totalSteps: total };
   }, [minerRuns, queries]);
