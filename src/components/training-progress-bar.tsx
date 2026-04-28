@@ -37,7 +37,7 @@ export function TrainingProgressBar({
       )}
     >
       <div className="flex items-baseline justify-between gap-3">
-        <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+        <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground">
           Epoch Progress
           {version && (
             <span className="ml-2 font-mono text-muted-foreground/60 normal-case tracking-normal">
@@ -48,7 +48,7 @@ export function TrainingProgressBar({
         <p className="font-mono text-xs tabular-nums text-foreground/90">
           {hasData ? (
             <>
-              <span className="text-primary">{formatTokens(tokensDone!)}</span>
+              <span className="text-signal">{formatTokens(tokensDone!)}</span>
               <span className="text-muted-foreground">
                 {" / "}
                 {formatTokens(tokensTarget)} tokens
@@ -60,21 +60,21 @@ export function TrainingProgressBar({
         </p>
       </div>
 
-      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+      <div className="relative mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted/60 ring-1 ring-foreground/5">
         <div
-          className="h-full rounded-full bg-primary transition-[width] duration-500 ease-out"
+          className="h-full rounded-full bg-signal transition-[width] duration-500 ease-out"
           style={{
             width: `${clamped}%`,
             boxShadow:
               clamped > 0
-                ? "0 0 12px oklch(0.72 0.24 135 / 35%)"
+                ? "0 0 14px oklch(0.886 0.176 169.5 / 45%)"
                 : undefined,
           }}
         />
       </div>
 
       <div className="mt-1.5 flex items-baseline justify-between text-[10px] text-muted-foreground">
-        <span className="font-mono tabular-nums">
+        <span className="font-mono tabular-nums text-signal/80">
           {hasData ? `${rawPercent.toFixed(2)}%` : "\u2014"}
         </span>
         {globalStep != null && (

@@ -14,21 +14,43 @@ import {
 } from "recharts";
 import { getInnerSteps } from "@/lib/api";
 import type { TrainingRun } from "@/lib/types";
+import { ChartSkeleton } from "./chart-skeleton";
 
-const MINER_COLORS = [
-  "#32ffc8",
-  "#1a9977",
-  "#5dffd6",
-  "#0dcc9e",
-  "#38bdf8",
-  "#c084fc",
-  "#f472b6",
-  "#facc15",
-  "#60a5fa",
-  "#a78bfa",
-  "#2dd4bf",
-  "#e879f9",
+/**
+ * Constrained mint-family palette for multi-miner overlays. Per the
+ * Two-Palette Rule the entire chart stays in the data-viz mint family;
+ * differentiation among miners comes from a 6-step lightness ramp first,
+ * then from line styles (dashed -> dotted -> dot-dash) for series 7+.
+ *
+ * If you need to plot more than ~18 miners cleanly, the right answer is
+ * a "show top N" UX rather than more colors. Twelve-color rainbows are
+ * what Wandb does; we explicitly don't.
+ */
+const MINER_HUES = [
+  "oklch(0.886 0.176 169.5)", // signal mint (brightest)
+  "oklch(0.55 0.13 170)", // mint deep
+  "oklch(0.93 0.13 170)", // mint light
+  "oklch(0.74 0.16 167)", // mint true
+  "oklch(0.42 0.11 172)", // mint dark
+  "oklch(0.97 0.07 170)", // mint pale
+] as const;
+
+const MINER_DASHES: (string | undefined)[] = [
+  undefined, // solid
+  "5 4", // dashed
+  "2 3", // dotted
 ];
+
+function minerStrokeFor(idx: number): {
+  stroke: string;
+  strokeDasharray: string | undefined;
+} {
+  const cycleStage = Math.floor(idx / MINER_HUES.length);
+  return {
+    stroke: MINER_HUES[idx % MINER_HUES.length],
+    strokeDasharray: MINER_DASHES[cycleStage % MINER_DASHES.length],
+  };
+}
 
 interface MultiMinerLossChartProps {
   minerRuns: TrainingRun[];
@@ -47,7 +69,12 @@ export function MultiMinerLossChart({
   });
 
   const { chartData, seriesKeys, totalSteps } = useMemo(() => {
-    const keys: { key: string; uid: number; color: string }[] = [];
+    const keys: {
+      key: string;
+      uid: number;
+      stroke: string;
+      strokeDasharray: string | undefined;
+    }[] = [];
     const stepMap = new Map<number, Record<string, unknown>>();
     const seenUids = new Set<number>();
     let colorIdx = 0;
@@ -63,9 +90,9 @@ export function MultiMinerLossChart({
       seenUids.add(uid);
 
       const lossKey = `uid_${uid}`;
-      const color = MINER_COLORS[colorIdx % MINER_COLORS.length];
+      const { stroke, strokeDasharray } = minerStrokeFor(colorIdx);
       colorIdx++;
-      keys.push({ key: lossKey, uid, color });
+      keys.push({ key: lossKey, uid, stroke, strokeDasharray });
 
       for (const pt of steps) {
         if (pt.loss === null) continue;
@@ -92,20 +119,16 @@ export function MultiMinerLossChart({
   if (chartData.length === 0) {
     const anyLoading = queries.some((q) => q.isLoading);
     return (
-      <div
-        className="flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground"
-        style={{ height }}
-      >
-        <div className="relative flex h-3 w-3">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" style={{ backgroundColor: "#32ffc8" }} />
-          <span className="relative inline-flex h-3 w-3 rounded-full" style={{ backgroundColor: "#32ffc8" }} />
-        </div>
-        <span>
-          {anyLoading
-            ? `Loading data from ${minerRuns.length} miner(s)\u2026`
-            : `Waiting for training data from ${minerRuns.length} miner(s)\u2026`}
-        </span>
-      </div>
+      <ChartSkeleton
+        height={height}
+        variant={anyLoading ? "loading" : "empty"}
+        status={
+          anyLoading
+            ? `Loading ${minerRuns.length} miner${minerRuns.length === 1 ? "" : "s"}`
+            : `Awaiting first window from ${minerRuns.length} miner${minerRuns.length === 1 ? "" : "s"}`
+        }
+        hint={anyLoading ? undefined : "no data yet"}
+      />
     );
   }
 
@@ -147,11 +170,11 @@ export function MultiMinerLossChart({
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "#262626",
-              border: "1px solid rgba(255,255,255,0.1)",
+              backgroundColor: "oklch(0.18 0 0)",
+              border: "1px solid oklch(1 0 0 / 10%)",
               borderRadius: "6px",
               fontSize: "12px",
-              color: "#e5e5e5",
+              color: "oklch(0.92 0 0)",
             }}
             labelFormatter={(v) => {
               const d = new Date((v as number) * 1000);
@@ -171,7 +194,8 @@ export function MultiMinerLossChart({
               type="monotone"
               dataKey={s.key}
               name={`UID ${s.uid}`}
-              stroke={s.color}
+              stroke={s.stroke}
+              strokeDasharray={s.strokeDasharray}
               dot={false}
               strokeWidth={1.5}
               isAnimationActive={false}

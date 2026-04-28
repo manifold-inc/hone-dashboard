@@ -13,6 +13,8 @@ import type {
   UidDetail,
   NetworkStats,
   ProjectVersionRow,
+  EvalResult,
+  LatestEvalScores,
 } from "./types";
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -166,6 +168,37 @@ export function getGatherStatus(id: string, params?: { window?: number; limit?: 
   return fetchJson<{ gatherStatus: GatherStatusRow[] }>(
     `/api/runs/${id}/gather-status${qs ? `?${qs}` : ""}`
   );
+}
+
+// ----- Evaluator endpoints --------------------------------------------------
+// Time-series of evaluator-published benchmark scores. Pass ``version``
+// to scope to a single training-run version (you almost always want
+// this -- otherwise you're mixing tasks across model checkpoints from
+// different code versions).
+export function getEvalResults(params?: {
+  version?: string;
+  task?: string;
+  metric?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const q = new URLSearchParams();
+  if (params?.version) q.set("version", params.version);
+  if (params?.task) q.set("task", params.task);
+  if (params?.metric) q.set("metric", params.metric);
+  if (params?.limit) q.set("limit", String(params.limit));
+  if (params?.offset) q.set("offset", String(params.offset));
+  const qs = q.toString();
+  return fetchJson<{ results: EvalResult[] }>(
+    `/api/eval${qs ? `?${qs}` : ""}`,
+  );
+}
+
+// Per-task latest score for the most recent evaluated checkpoint of
+// ``version``. Defaults to ``acc_norm`` (length-normalised accuracy).
+export function getLatestEvalScores(version: string, metric: string = "acc_norm") {
+  const q = new URLSearchParams({ version, metric });
+  return fetchJson<LatestEvalScores>(`/api/eval/latest?${q.toString()}`);
 }
 
 export async function getProjectBlog(project: string): Promise<string | null> {

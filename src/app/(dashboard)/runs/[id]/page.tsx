@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   getRun,
@@ -8,7 +8,6 @@ import {
   getScores,
   getMinerMetrics,
   getGradientStats,
-  getSyncScores,
   getSlashEvents,
   getInactivityEvents,
   getGatherStatus,
@@ -23,6 +22,8 @@ import { ScoresTable } from "@/components/scores-table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { MetricExplainer } from "@/components/metric-explainer";
+import { deriveWindowSeries } from "@/lib/derived-metrics";
 import Link from "next/link";
 
 function truncateHotkey(hotkey: string): string {
@@ -36,6 +37,7 @@ export default function RunDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const [showRawLoss, setShowRawLoss] = useState(false);
 
   const { data: runData, isLoading: runLoading } = useQuery({
     queryKey: ["run", id],
@@ -63,12 +65,6 @@ export default function RunDetailPage({
   const { data: gradData } = useQuery({
     queryKey: ["gradients", id],
     queryFn: () => getGradientStats(id, { limit: 500 }),
-    enabled: !!runData && runData.run.role === "validator",
-  });
-
-  const { data: syncData } = useQuery({
-    queryKey: ["sync-scores", id],
-    queryFn: () => getSyncScores(id, { limit: 2000 }),
     enabled: !!runData && runData.run.role === "validator",
   });
 
@@ -111,12 +107,12 @@ export default function RunDetailPage({
   const scores = scoreData?.scores ?? [];
   const miners = minerData?.miners?.slice().reverse() ?? [];
   const gradients = gradData?.gradients?.slice().reverse() ?? [];
-  const syncScores = syncData?.syncScores ?? [];
   const slashes = slashData?.slashes ?? [];
   const inactivityEvts = inactivityData?.inactivity ?? [];
   const gatherEntries = gatherData?.gatherStatus ?? [];
 
   const isValidator = run.role === "validator";
+  const derivedWindows = deriveWindowSeries(windows);
 
   return (
     <div className="space-y-8">
@@ -124,15 +120,15 @@ export default function RunDetailPage({
         <div>
           <div className="flex items-center gap-3">
             <Link
-              href="/runs"
+              href={`/nodes/${encodeURIComponent(run.hotkey)}`}
               className="text-sm text-muted-foreground hover:text-foreground"
             >
-              Runs
+              {run.role === "validator" ? "Validator" : "Miner"}
+              {run.uid !== null ? ` #${run.uid}` : ""}
             </Link>
             <span className="text-muted-foreground">/</span>
             <h1 className="text-xl font-semibold tracking-tight">
-              {run.role === "validator" ? "Validator" : "Miner"}{" "}
-              {run.uid !== null ? `#${run.uid}` : ""}
+              Run #{run.id}
             </h1>
           </div>
           <p
@@ -221,158 +217,200 @@ export default function RunDetailPage({
         </TabsList>
 
         {/* ──── Training Tab ──── */}
+        {/* Order is high-level (per-window aggregates) -> low-level
+            (per-step / system) so the page reads top-down. */}
         <TabsContent value="training" className="space-y-6">
-          <Card className="bg-card/60" style={{ borderColor: "rgba(50, 255, 200, 0.15)" }}>
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Live Loss (per step)
-                </CardTitle>
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" style={{ backgroundColor: "#32ffc8" }} />
-                  <span className="relative inline-flex h-2 w-2 rounded-full" style={{ backgroundColor: "#32ffc8" }} />
-                </span>
+          {/* Headline: per-window training loss / validator anti-overfit */}
+          {isValidator && windows.length > 0 && (
+            <MetricExplainer
+              title="Validator Anti-Overfitting Check"
+              plainSubtitle={"Each window the validator simulates applying every miner's gradient and measures the resulting loss change \u2014 once on the data the miner says it trained on (own), once on independent random data."}
+              info={
+                <div className="space-y-2">
+                  <p>
+                    Source:{" "}
+                    <span className="font-mono">
+                      windows.{"{lossOwnBefore,lossOwnAfter,lossRandomBefore,lossRandomAfter}"}
+                    </span>{" "}
+                    averaged across all evaluated peers per window.
+                  </p>
+                  <p>
+                    <strong>Gradient Quality</strong> tells you the gradients
+                    are doing real work; <strong>Generalization Gap</strong>{" "}
+                    tells you they aren&rsquo;t just memorizing the
+                    miner&rsquo;s chosen data slice.
+                  </p>
+                </div>
+              }
+              action={
+                <button
+                  type="button"
+                  onClick={() => setShowRawLoss((s) => !s)}
+                  className="text-[10px] text-primary hover:underline"
+                >
+                  {showRawLoss ? "Hide raw losses" : "Show raw losses"}
+                </button>
+              }
+            >
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div>
+                  <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground">
+                    Gradient Quality
+                  </p>
+                  <TimeSeriesChart
+                    data={derivedWindows}
+                    series={[
+                      {
+                        key: "gradientQuality",
+                        label: "Quality",
+                        color: "positive",
+                      },
+                    ]}
+                    yUnit="%"
+                    referenceY={0}
+                    height={200}
+                  />
+                </div>
+                <div>
+                  <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground">
+                    Generalization Gap
+                  </p>
+                  <TimeSeriesChart
+                    data={derivedWindows}
+                    series={[
+                      {
+                        key: "generalizationGap",
+                        label: "Gap (own \u2212 random)",
+                        color: "warning",
+                      },
+                    ]}
+                    yUnit="pp"
+                    referenceY={0}
+                    height={200}
+                  />
+                </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <InnerStepLossChart runId={run.id} />
-            </CardContent>
-          </Card>
+
+              {showRawLoss && (
+                <div className="mt-4 border-t border-border/40 pt-4">
+                  <p className="mb-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                    Raw losses (per window, averaged across peers)
+                  </p>
+                  <TimeSeriesChart
+                    data={windows}
+                    series={[
+                      {
+                        key: "lossOwnBefore",
+                        label: "Own \u2014 before",
+                        color: "#1a9977",
+                        dashed: true,
+                      },
+                      {
+                        key: "lossOwnAfter",
+                        label: "Own \u2014 after",
+                        color: "#32ffc8",
+                      },
+                      {
+                        key: "lossRandomBefore",
+                        label: "Random \u2014 before",
+                        color: "#fbbf24",
+                        dashed: true,
+                      },
+                      {
+                        key: "lossRandomAfter",
+                        label: "Random \u2014 after",
+                        color: "#f59e0b",
+                      },
+                    ]}
+                    yUnit="loss"
+                    height={220}
+                  />
+                </div>
+              )}
+            </MetricExplainer>
+          )}
+
+          {!isValidator && miners.length > 0 && (
+            <MetricExplainer
+              title="Training Loss"
+              plainSubtitle="Per-window training loss reported by this miner."
+              info="Source: miner_metrics.loss. One point per training window."
+              headlineValue={
+                miners[miners.length - 1]?.loss?.toFixed(4) ?? null
+              }
+            >
+              <TimeSeriesChart
+                data={miners}
+                series={[{ key: "loss", label: "Loss", color: "#32ffc8" }]}
+                yUnit="loss"
+                height={260}
+              />
+            </MetricExplainer>
+          )}
+
+          {/* Per-inner-step live loss -- lower-level than the per-window curves above */}
+          <MetricExplainer
+            title="Live Loss (per inner step)"
+            plainSubtitle="Per mini-batch loss inside the current window. Streams live; useful for catching divergence the moment it happens."
+            info="Source: inner_steps.loss. Many inner steps roll up into one outer (global) step at the end of each window."
+            className="ring-1 ring-signal/20"
+          >
+            <InnerStepLossChart runId={run.id} />
+          </MetricExplainer>
 
           {isValidator && windows.length > 0 && (
-            <>
-              <Card className="bg-card/60">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Loss (Own Data)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <TimeSeriesChart
-                    data={windows}
-                    series={[
-                      { key: "lossOwnBefore", label: "Before" },
-                      { key: "lossOwnAfter", label: "After" },
-                    ]}
-                  />
-                </CardContent>
-              </Card>
-
-              <Card className="bg-card/60">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Loss (Random Data)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <TimeSeriesChart
-                    data={windows}
-                    series={[
-                      { key: "lossRandomBefore", label: "Before" },
-                      { key: "lossRandomAfter", label: "After" },
-                    ]}
-                  />
-                </CardContent>
-              </Card>
-
-              <div className="grid gap-4 lg:grid-cols-2">
-                <Card className="bg-card/60">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Improvement %
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <TimeSeriesChart
-                      data={windows}
-                      series={[
-                        {
-                          key: "lossOwnImprovement",
-                          label: "Own",
-                          color: "positive",
-                        },
-                        {
-                          key: "lossRandomImprovement",
-                          label: "Random",
-                        },
-                      ]}
-                      height={240}
-                    />
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-card/60">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Learning Rate
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <TimeSeriesChart
-                      data={windows}
-                      series={[
-                        { key: "outerLr", label: "Outer LR" },
-                        { key: "innerLr", label: "Inner LR" },
-                      ]}
-                      height={240}
-                    />
-                  </CardContent>
-                </Card>
-              </div>
-            </>
+            <MetricExplainer
+              title="Learning Rate"
+              plainSubtitle="Outer (global) and inner (per-batch) learning rates over time."
+            >
+              <TimeSeriesChart
+                data={windows}
+                series={[
+                  { key: "outerLr", label: "Outer LR" },
+                  { key: "innerLr", label: "Inner LR" },
+                ]}
+                height={200}
+              />
+            </MetricExplainer>
           )}
 
           {!isValidator && miners.length > 0 && (
             <>
-              <Card className="bg-card/60">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Training Loss
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+              <div className="grid gap-3 lg:grid-cols-2">
+                <MetricExplainer
+                  title="Norms"
+                  plainSubtitle="Gradient and weight norms. Spikes can indicate instability."
+                >
                   <TimeSeriesChart
                     data={miners}
-                    series={[{ key: "loss", label: "Loss" }]}
+                    series={[
+                      { key: "gradNorm", label: "Grad Norm" },
+                      { key: "weightNorm", label: "Weight Norm" },
+                    ]}
+                    height={200}
                   />
-                </CardContent>
-              </Card>
+                </MetricExplainer>
 
-              <div className="grid gap-4 lg:grid-cols-2">
-                <Card className="bg-card/60">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Throughput (tokens/sec)
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <TimeSeriesChart
-                      data={miners}
-                      series={[
-                        { key: "tokensPerSec", label: "Tokens/sec" },
-                      ]}
-                      height={240}
-                    />
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-card/60">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Norms
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <TimeSeriesChart
-                      data={miners}
-                      series={[
-                        { key: "gradNorm", label: "Grad Norm" },
-                        { key: "weightNorm", label: "Weight Norm" },
-                      ]}
-                      height={240}
-                    />
-                  </CardContent>
-                </Card>
+                <MetricExplainer
+                  title="Throughput"
+                  plainSubtitle="Tokens processed per second."
+                  headlineValue={
+                    miners[miners.length - 1]?.tokensPerSec != null
+                      ? `${miners[miners.length - 1].tokensPerSec!.toFixed(0)} tok/s`
+                      : null
+                  }
+                >
+                  <TimeSeriesChart
+                    data={miners}
+                    series={[
+                      {
+                        key: "tokensPerSec",
+                        label: "Tokens/sec",
+                      },
+                    ]}
+                    height={200}
+                  />
+                </MetricExplainer>
               </div>
 
               {/* Outer step diagnostics */}

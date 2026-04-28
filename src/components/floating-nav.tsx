@@ -5,12 +5,9 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { href: "/overview", label: "Overview" },
+  { href: "/network", label: "Network" },
+  { href: "/nodes", label: "Nodes" },
   { href: "/projects", label: "Projects" },
-  { href: "/miners", label: "Miners" },
-  { href: "/validators", label: "Validators" },
-  { href: "/leaderboard", label: "Leaderboard" },
-  { href: "/runs", label: "Runs" },
 ];
 
 export function FloatingNav() {
@@ -35,8 +32,8 @@ export function FloatingNav() {
 
         {links.map((link) => {
           const active =
-            link.href === "/overview"
-              ? pathname === "/overview"
+            link.href === "/network"
+              ? pathname === "/network"
               : pathname.startsWith(link.href);
           return (
             <Link

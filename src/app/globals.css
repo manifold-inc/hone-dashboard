@@ -49,6 +49,14 @@
   --color-positive: var(--positive);
   --color-negative: var(--negative);
   --color-warning: var(--warning);
+  --color-signal: var(--signal);
+  --color-signal-deep: var(--signal-deep);
+  --color-signal-true: var(--signal-true);
+  --color-signal-light: var(--signal-light);
+  --color-random: var(--random);
+  --color-random-deep: var(--random-deep);
+  --color-chart-warning: var(--chart-warning);
+  --tracking-caps: 0.15em;
 }
 
 :root {
@@ -79,6 +87,13 @@
   --positive: oklch(0.65 0.2 145);
   --negative: oklch(0.6 0.22 15);
   --warning: oklch(0.75 0.15 75);
+  --signal: oklch(0.886 0.176 169.5);
+  --signal-deep: oklch(0.55 0.13 170);
+  --signal-true: oklch(0.74 0.16 167);
+  --signal-light: oklch(0.93 0.13 170);
+  --random: oklch(0.7 0.12 220);
+  --random-deep: oklch(0.55 0.14 220);
+  --chart-warning: oklch(0.72 0.14 25);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.79 0.15 62);
@@ -116,6 +131,13 @@
   --positive: oklch(0.7 0.2 145);
   --negative: oklch(0.65 0.22 15);
   --warning: oklch(0.8 0.15 75);
+  --signal: oklch(0.886 0.176 169.5);
+  --signal-deep: oklch(0.55 0.13 170);
+  --signal-true: oklch(0.74 0.16 167);
+  --signal-light: oklch(0.93 0.13 170);
+  --random: oklch(0.7 0.12 220);
+  --random-deep: oklch(0.55 0.14 220);
+  --chart-warning: oklch(0.72 0.14 25);
   --sidebar: oklch(0.1 0 0);
   --sidebar-foreground: oklch(0.92 0 0);
   --sidebar-primary: oklch(0.79 0.15 62);

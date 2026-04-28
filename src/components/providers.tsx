@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { LiveUpdateProvider } from "./live-update-provider";
+import { TooltipProvider } from "./ui/tooltip";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(
@@ -20,7 +21,9 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={client}>
-      <LiveUpdateProvider>{children}</LiveUpdateProvider>
+      <TooltipProvider delay={500} closeDelay={0}>
+        <LiveUpdateProvider>{children}</LiveUpdateProvider>
+      </TooltipProvider>
     </QueryClientProvider>
   );
 }

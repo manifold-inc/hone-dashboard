@@ -19,7 +19,7 @@ export function MetricCard({
   return (
     <Card className={cn("bg-card/60", className)}>
       <CardContent className="pt-5 pb-4 px-5">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground">
           {label}
         </p>
         <div className="mt-1.5 flex items-baseline gap-2">

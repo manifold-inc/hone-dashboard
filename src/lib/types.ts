@@ -245,3 +245,41 @@ export interface ProjectInfo {
     runCount: number;
   }[];
 }
+
+// One row from /api/eval (the eval_results table). The evaluator
+// produces multiple rows per evaluated window: one per (task, metric)
+// pair (e.g. hellaswag x acc, hellaswag x acc_norm, mmlu x acc, ...).
+export interface EvalResult {
+  id: number;
+  version: string;
+  project: string;
+  window: number;
+  globalStep: number | null;
+  task: string;
+  metricName: string;
+  score: number;
+  numFewshot: number;
+  nSamples: number | null;
+  evalDurationS: number | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+}
+
+// Response shape of /api/eval/latest -- one entry per task with the
+// most-recent (window) score for the configured metric (defaults to
+// acc_norm). Used for the headline tile + delta on each task card.
+export interface LatestEvalScores {
+  latest: Record<
+    string,
+    {
+      score: number;
+      window: number;
+      globalStep: number | null;
+      metricName: string;
+      createdAt: string;
+      evalDurationS: number | null;
+      nSamples: number | null;
+    }
+  >;
+}

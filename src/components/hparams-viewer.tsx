@@ -138,7 +138,7 @@ function CollapsibleSection({
             d="M9 5l7 7-7 7"
           />
         </svg>
-        <span className="uppercase tracking-wider text-muted-foreground">
+        <span className="uppercase tracking-[0.15em] text-muted-foreground">
           {title}
         </span>
       </button>

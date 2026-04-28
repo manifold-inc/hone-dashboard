@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { useLiveInnerSteps } from "@/lib/use-live-metrics";
 import { getInnerSteps } from "@/lib/api";
+import { ChartSkeleton } from "./chart-skeleton";
 
 interface InnerStepLossChartProps {
   runId: number | undefined;
@@ -60,17 +61,14 @@ export function InnerStepLossChart({
   }, [historicalData, liveData]);
 
   if (chartData.length === 0) {
+    const isLoading = runId != null && historicalData === undefined;
     return (
-      <div
-        className="flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground"
-        style={{ height }}
-      >
-        <div className="relative flex h-3 w-3">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" style={{ backgroundColor: "#32ffc8" }} />
-          <span className="relative inline-flex h-3 w-3 rounded-full" style={{ backgroundColor: "#32ffc8" }} />
-        </div>
-        <span>Waiting for live training data&hellip;</span>
-      </div>
+      <ChartSkeleton
+        height={height}
+        variant={isLoading ? "loading" : "empty"}
+        status={isLoading ? "Loading inner steps" : "Awaiting first step"}
+        hint={isLoading ? undefined : "no data yet"}
+      />
     );
   }
 
@@ -127,11 +125,11 @@ export function InnerStepLossChart({
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "#262626",
-              border: "1px solid rgba(255,255,255,0.1)",
+              backgroundColor: "oklch(0.18 0 0)",
+              border: "1px solid oklch(1 0 0 / 10%)",
               borderRadius: "6px",
               fontSize: "12px",
-              color: "#e5e5e5",
+              color: "oklch(0.92 0 0)",
             }}
             formatter={(value, name) => [
               typeof value === "number"
@@ -141,14 +139,14 @@ export function InnerStepLossChart({
             ]}
           />
           <Legend
-            wrapperStyle={{ fontSize: "12px", color: "#8a8a8a" }}
+            wrapperStyle={{ fontSize: "12px", color: "oklch(0.55 0 0)" }}
           />
           <Line
             yAxisId="loss"
             type="monotone"
             dataKey="loss"
             name="Loss"
-            stroke="#32ffc8"
+            stroke="oklch(0.886 0.176 169.5)"
             dot={false}
             strokeWidth={1.5}
             isAnimationActive={false}
@@ -158,7 +156,7 @@ export function InnerStepLossChart({
             type="monotone"
             dataKey="gradNorm"
             name="Grad Norm"
-            stroke="#8a8a8a"
+            stroke="oklch(0.55 0 0)"
             dot={false}
             strokeWidth={1}
             strokeDasharray="4 2"
